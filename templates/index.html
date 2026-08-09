@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>High-Performance Simulation Sandbox</title>
+    <style>
+        body { font-family: monospace; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
+        .container { display: flex; gap: 20px; }
+        .controls { flex: 1; background: #1e1e1e; padding: 20px; border-radius: 8px; }
+        .viewport { flex: 2; background: #1e1e1e; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; }
+        input, select, textarea, button { width: 100%; margin-bottom: 10px; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 160px; font-family: monospace; }
+        button { background: #00bcd4; color: #000; font-weight: bold; cursor: pointer; }
+        button:hover { background: #00acc1; }
+        .btn-export { background: #4caf50; color: #fff; margin-top: 5px; display: none; }
+        .btn-export:hover { background: #43a047; }
+        canvas { background: #000; border: 1px solid #333; width: 100%; max-width: 600px; height: 600px; }
+        .telemetry { margin-top: 15px; background: #121212; padding: 12px; border-radius: 4px; border: 1px solid #333; font-size: 13px; color: #00bcd4; display: none; width: 100%; box-sizing: border-box; line-height: 1.5; }
+        .hw-badge { background: #252525; padding: 10px; border-radius: 4px; border: 1px solid #444; margin-bottom: 15px; font-size: 12px; color: #ff9800; line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <h1>Vectorized Simulation Sandbox</h1>
+    <div class="container">
+        <div class="controls">
+            <div class="hw-badge" id="hwBadge">
+                <strong>Hardware Status:</strong> Loading system specs...
+            </div>
+
+            <h3>Allocation Settings</h3>
+            <label>RAM Allocation Ratio (%):</label>
+            <input type="number" id="ram_ratio" min="5" max="80" step="5" value="20" onchange="updateAllocation()">
+            <label>Max Hardware Walkers (Cap):</label>
+            <input type="text" id="maxWalkersDisplay" readonly style="background: #1a1a1a; color: #888;">
+
+            <h3>Select Core Engine</h3>
+            <select id="engine_type">
+                <option value="diffusion">Brownian Diffusion / Random Walk</option>
+                <option value="ou">Ornstein-Uhlenbeck (Mean-Reverting)</option>
+                <option value="drift">Linear Vector Drift / Flow</option>
+            </select>
+
+            <h3>Engine Parameters</h3>
+            <label>Walkers / Particles:</label>
+            <input type="number" id="walkers" value="100000">
+            <label>Steps:</label>
+            <input type="number" id="steps" value="100">
+            <label>Step Scale / Variance:</label>
+            <input type="number" step="0.1" id="step_scale" value="1.0">
+
+            <h3>Custom Python Rule (Optional)</h3>
+            <textarea id="user_code" placeholder="# Write your custom function here:
+# def custom_rule(x, y):
+#     return x, y"></textarea>
+            <button onclick="runSimulation()">Execute Simulation</button>
+        </div>
+        <div class="viewport">
+            <h3>Real-Time Output Viewport</h3>
+            <canvas id="simCanvas" width="600" height="600"></canvas>
+            <button id="exportBtn" class="btn-export" onclick="exportData()">Export Coordinates (CSV)</button>
+            <div id="telemetryBox" class="telemetry">
+                <div><strong>Status:</strong> <span id="telStatus" style="color: #4caf50;">Success</span> (JIT: <span id="telJit"></span>)</div>
+                <div><strong>Engine Time:</strong> <span id="telEngine"></span> ms | <strong>Total Time:</strong> <span id="telTotal"></span> ms</div>
+                <hr style="border: 0; border-top: 1px solid #333; margin: 8px 0;">
+                <div><strong>Centroid (X, Y):</strong> (<span id="telCx"></span>, <span id="telCy"></span>)</div>
+                <div><strong>Spread (Std Dev):</strong> X: <span id="telSx"></span> | Y: <span id="telSy"></span></div>
+                <div><strong>Bounding Box:</strong> X[<span id="telMinX"></span>, <span id="telMaxX"></span>] Y[<span id="telMinY"></span>, <span id="telMaxY"></span>]</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById("simCanvas");
+        const ctx = canvas.getContext("2d");
+        let lastData = null;
+
+        async function fetchSystemInfo() {
+            const ratio = document.getElementById("ram_ratio").value;
+            const res = await fetch(`/hardware?ratio=${ratio}`);
+            const data = await res.json();
+            document.getElementById("hwBadge").innerHTML = `
+                <strong>Hardware Status:</strong><br>
+                System RAM: <strong>${data.total_ram_gb} GB</strong><br>
+                Allocated Buffer: <strong>${data.allocated_mb} MB</strong> (${data.ratio}% of RAM)<br>
+                Max Walker Cap: <strong>${data.max_walkers.toLocaleString()}</strong>
+            `;
+            document.getElementById("maxWalkersDisplay").value = data.max_walkers.toLocaleString();
+        }
+
+        function updateAllocation() {
+            fetchSystemInfo();
+        }
+
+        fetchSystemInfo();
+
+        function drawPoints(xArr, yArr) {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#00bcd4";
+            for (let i = 0; i < xArr.length; i += 10) {
+                let screenX = (xArr[i] + 100) * (canvas.width / 200);
+                let screenY = (yArr[i] + 100) * (canvas.height / 200);
+                ctx.fillRect(screenX, screenY, 2, 2);
+            }
+        }
+
+        async function runSimulation() {
+            const payload = {
+                engine: document.getElementById("engine_type").value,
+                walkers: parseInt(document.getElementById("walkers").value),
+                steps: parseInt(document.getElementById("steps").value),
+                step_scale: parseFloat(document.getElementById("step_scale").value),
+                code: document.getElementById("user_code").value,
+                ram_ratio: parseFloat(document.getElementById("ram_ratio").value)
+            };
+            const response = await fetch("/run", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.status === "success") { 
+                lastData = data;
+                drawPoints(data.x, data.y);
+                
+                document.getElementById("telStatus").innerText = "Successful";
+                document.getElementById("telStatus").style.color = "#4caf50";
+                document.getElementById("telJit").innerText = data.jit_success ? "Compiled (Numba JIT)" : "Fallback (Standard Python)";
+                document.getElementById("telEngine").innerText = data.engine_time_ms;
+                document.getElementById("telTotal").innerText = data.total_time_ms;
+                
+                document.getElementById("telCx").innerText = data.metrics.centroid_x;
+                document.getElementById("telCy").innerText = data.metrics.centroid_y;
+                document.getElementById("telSx").innerText = data.metrics.std_x;
+                document.getElementById("telSy").innerText = data.metrics.std_y;
+                document.getElementById("telMinX").innerText = data.metrics.min_x;
+                document.getElementById("telMaxX").innerText = data.metrics.max_x;
+                document.getElementById("telMinY").innerText = data.metrics.min_y;
+                document.getElementById("telMaxY").innerText = data.metrics.max_y;
+
+                document.getElementById("telemetryBox").style.display = "block";
+                document.getElementById("exportBtn").style.display = "block";
+            } else { 
+                document.getElementById("telStatus").innerText = "Failed";
+                document.getElementById("telStatus").style.color = "#f44336";
+                document.getElementById("telemetryBox").style.display = "block";
+                document.getElementById("exportBtn").style.display = "none";
+                alert("Error: " + data.message); 
+            }
+        }
+
+        function exportData() {
+            if (!lastData) return;
+            let csv = "x,y\n";
+            for (let i = 0; i < lastData.x.length; i++) {
+                csv += `${lastData.x[i]},${lastData.y[i]}\n`;
+            }
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "simulation_coordinates.csv";
+            a.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Generated Output Images
+*.png
+
+# OS Junk
+.DS_Store
+Thumbs.db
