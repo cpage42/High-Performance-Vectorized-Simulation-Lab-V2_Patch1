@@ -477,10 +477,27 @@
             consoleBox.innerHTML += `<div>${text}</div>`;
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
+
+        // HIGH-DPI / RETINA SCALING IMPLEMENTED HERE
         function renderCanvas(canvasId, gridData, res, theme) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
+            
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = 150;
+            const displayHeight = 150;
+            
+            if (canvas.width !== displayWidth * dpr || canvas.height !== displayHeight * dpr) {
+                canvas.width = displayWidth * dpr;
+                canvas.height = displayHeight * dpr;
+                canvas.style.width = displayWidth + 'px';
+                canvas.style.height = displayHeight + 'px';
+            }
+            
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
             const maxDensity = Math.max(...gridData) || 1;
             const offCanvas = document.createElement('canvas');
             offCanvas.width = res; offCanvas.height = res;
@@ -516,9 +533,10 @@
             }
             offCtx.putImageData(imgData, 0, 0);
             ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, displayWidth, displayHeight);
             ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(offCanvas, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(offCanvas, 0, 0, displayWidth, displayHeight);
+            ctx.restore();
         }
 
         async function fetchSystemInfo() {
@@ -572,13 +590,18 @@
                         const cardId = cardElements[idx].id.split('-')[1];
                         const customCode = panesPayload[idx].code.trim();
                         let finalGrid = resData.density_grid;
+                        
+                        // PYODIDE SANDBOX SAFEGUARD & EXCEPTION CATCHING
                         if (pyodideReady && customCode.length > 0) {
                             try {
                                 pyodideInstance.globals.set("raw_grid", pyodideInstance.toPy(finalGrid));
                                 const pyCode = `
 import numpy as np
 grid_arr = np.array(raw_grid, dtype=np.float32)
-` + customCode + `
+try:
+    ${customCode.split('\n').join('\n    ')}
+except Exception as e:
+    pass
 processed_grid = grid_arr.tolist()
 `;
                                 pyodideInstance.runPython(pyCode);

@@ -105,7 +105,7 @@ def run_eulerian_pipeline(engine, resolution, steps, boundary):
     }
 
 # ============================================================================
-# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines with Real Kernels)
+# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines)
 # ============================================================================
 
 @jit(nopython=True)
@@ -123,32 +123,27 @@ def run_particle_simulation(walkers, steps, scale, engine_type):
             x += dx * 0.005
             y += dy * 0.005
         elif engine_type in ["heston", "bates", "black_scholes"]:
-            # Stochastic Volatility / Asset Price Path simulation
             dt = 0.01
             vol = np.abs(np.random.normal(0.2, 0.05, walkers))
             x += (0.05 - 0.5 * vol**2) * dt + vol * np.sqrt(dt) * np.random.randn(walkers).astype(np.float32)
             y += -0.7 * vol * np.random.randn(walkers).astype(np.float32) * np.sqrt(dt)
         elif engine_type in ["schrodinger", "quantum"]:
-            # Quantum Wavepacket phase space oscillation
             phase = s * 0.15
             x_old = x.copy()
             x = x_old * np.cos(phase) - y * np.sin(phase)
             y = x_old * np.sin(phase) + y * np.cos(phase)
             x += np.random.normal(0, 0.02, walkers).astype(np.float32)
         elif engine_type in ["thermal", "kramers"]:
-            # Radial Thermal Conduction expansion
             r = np.sqrt(x**2 + y**2) + 1e-5
             x += (x / r) * 0.05 * scale + np.random.normal(0, 0.05, walkers).astype(np.float32)
             y += (y / r) * 0.05 * scale + np.random.normal(0, 0.05, walkers).astype(np.float32)
         elif engine_type == "navier_stokes":
-            # Rotational fluid vorticity swirl
             theta = 0.05
             x_old = x.copy()
             x = x_old * np.cos(theta) - y * np.sin(theta)
             y = x_old * np.sin(theta) + y * np.cos(theta)
             x += np.random.normal(0, 0.08, walkers).astype(np.float32)
         else:
-            # Standard Brownian Wiener diffusion fallback
             x += np.random.normal(0, 0.1, walkers).astype(np.float32) * scale
             y += np.random.normal(0, 0.1, walkers).astype(np.float32) * scale
             
@@ -174,7 +169,6 @@ def run_lagrangian_pipeline(pane, resolution):
     if pane.get("record_history", False):
         for i in range(len(h_x)):
             hg, _, _ = np.histogram2d(h_y[i], h_x[i], bins=resolution, range=[[-15, 15], [-15, 15]])
-            # Full resolution history frame matching frontend expectations perfectly
             history.append(hg.flatten().astype(np.float64).tolist())
 
     elapsed_ms = (time.time() - start_time) * 1000.0
@@ -195,7 +189,7 @@ def run_lagrangian_pipeline(pane, resolution):
     }
 
 # ============================================================================
-# UNIFIED API ROUTE DISPATCHER
+# UNIFIED API ROUTE DISPATCHER WITH EXCEPTION GUARDING
 # ============================================================================
 
 @app.route("/run", methods=["POST"])
@@ -209,14 +203,23 @@ def run_batch():
     for idx, pane in enumerate(panes):
         engine = pane["engine"]
         boundary = pane.get("boundary", "periodic")
-        
-        if engine in ["grayscott", "bz_reaction"]:
-            logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}).")
-            res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary)
-        else:
-            logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
-            res_data = run_lagrangian_pipeline(pane, resolution)
-            
+        try:
+            if engine in ["grayscott", "bz_reaction"]:
+                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}).")
+                res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary)
+            else:
+                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
+                res_data = run_lagrangian_pipeline(pane, resolution)
+        except Exception as err:
+            logs.append(f"[CRITICAL ERROR] Pane #{idx+1} ({engine}) failed: {str(err)}")
+            # Graceful fallback payload for failed execution so batch remains intact
+            fallback_grid = np.zeros(resolution * resolution, dtype=np.float32).flatten().tolist()
+            res_data = {
+                "density_grid": fallback_grid,
+                "history": [],
+                "engine_time_ms": 0.0,
+                "metrics": {"centroid_x": 0.0, "centroid_y": 0.0, "std_x": 0.0, "std_y": 0.0}
+            }
         results.append(res_data)
 
     return jsonify({
