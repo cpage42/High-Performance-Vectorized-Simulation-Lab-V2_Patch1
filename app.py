@@ -3,14 +3,35 @@ import numpy as np
 from flask import Flask, jsonify, request, render_template
 from numba import jit, prange
 
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+
 app = Flask(__name__)
+
+@app.route("/hardware", methods=["GET"])
+def hardware_specs():
+    ratio = float(request.args.get("ratio", 20))
+    if HAS_PSUTIL:
+        total_ram_bytes = psutil.virtual_memory().total
+        total_ram_gb = round(total_ram_bytes / (1024**3), 1)
+    else:
+        total_ram_gb = 16.0
+    allocated_mb = round((total_ram_gb * 1024) * (ratio / 100.0), 1)
+    return jsonify({
+        "total_ram_gb": total_ram_gb,
+        "allocated_mb": allocated_mb,
+        "ratio": ratio
+    })
 
 # ============================================================================
 # PIPELINE 1: EULERIAN CONTINUUM SOLVER (Grid-Based Stencils & PDEs)
 # ============================================================================
 
 @jit(nopython=True, parallel=True)
-def solve_grayscott_grid(rows, cols, steps, boundary="periodic", du=0.2, dv=0.1, f=0.036, k=0.065):
+def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.055, k=0.062, du=0.2, dv=0.1):
     dx = 1.0 / rows
     max_d = max(du, dv)
     dt = 0.4 * (dx ** 2) / max_d
@@ -21,21 +42,20 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", du=0.2, dv=0.1,
     V = np.zeros((rows, cols), dtype=np.float32)
     
     c_r, c_c = rows // 2, cols // 2
-    r_size = int(rows * 0.15)
-    U[c_r-r_size:c_r+r_size, c_c-r_size:c_c+r_size] = 0.5
+    r_size = int(rows * 0.10)
+    U[c_r-r_size:c_r+r_size, c_c-r_size:c_c+r_size] = 0.50
     V[c_r-r_size:c_r+r_size, c_c-r_size:c_c+r_size] = 0.25
     
     np.random.seed(42)
     for i in prange(rows):
         for j in prange(cols):
-            U[i, j] += np.random.normal(0, 0.02)
-            V[i, j] += np.random.normal(0, 0.02)
+            U[i, j] += np.random.normal(0.0, 0.01)
+            V[i, j] += np.random.normal(0.0, 0.01)
 
-    # Pre-allocate history array for Numba compatibility (avoids .tolist() inside JIT)
     max_frames = 15
     history_arr = np.zeros((max_frames, rows, cols), dtype=np.float32)
     frame_count = 0
-    interval = max(1, steps // 10)
+    interval = max(1, steps // 15)
     
     for s in range(steps):
         if s % interval == 0 and frame_count < max_frames:
@@ -79,12 +99,13 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", du=0.2, dv=0.1,
             
     return V, history_arr, frame_count
 
-def run_eulerian_pipeline(engine, resolution, steps, boundary):
+def run_eulerian_pipeline(engine, resolution, steps, boundary, param1, param2):
     start_time = time.time()
     
     if engine in ["grayscott", "bz_reaction"]:
-        grid, hist_arr, frame_count = solve_grayscott_grid(resolution, resolution, steps, boundary)
-        # Convert history array to Python list outside the JIT boundary
+        f_rate = param1 if param1 > 0 else 0.055
+        k_rate = param2 if param2 > 0 else 0.062
+        grid, hist_arr, frame_count = solve_grayscott_grid(resolution, resolution, steps, boundary, f=f_rate, k=k_rate)
         history = [hist_arr[i].flatten().astype(np.float64).tolist() for i in range(frame_count)]
     else:
         grid = np.zeros((resolution, resolution), dtype=np.float32)
@@ -202,10 +223,6 @@ def run_lagrangian_pipeline(pane, resolution):
         "metrics": metrics
     }
 
-# ============================================================================
-# UNIFIED API ROUTE DISPATCHER WITH EXCEPTION GUARDING
-# ============================================================================
-
 @app.route("/run", methods=["POST"])
 def run_batch():
     data = request.json
@@ -217,10 +234,12 @@ def run_batch():
     for idx, pane in enumerate(panes):
         engine = pane["engine"]
         boundary = pane.get("boundary", "periodic")
+        param1 = float(pane.get("param1", 0.0))
+        param2 = float(pane.get("param2", 0.0))
         try:
             if engine in ["grayscott", "bz_reaction"]:
-                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}).")
-                res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary)
+                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}).")
+                res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary, param1, param2)
             else:
                 logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
                 res_data = run_lagrangian_pipeline(pane, resolution)
