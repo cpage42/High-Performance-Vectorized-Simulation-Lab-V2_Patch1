@@ -41,11 +41,16 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.055, k=0.06
     U = np.ones((rows, cols), dtype=np.float32)
     V = np.zeros((rows, cols), dtype=np.float32)
     
+    # Seed a smooth circular core (removes the square block artifact)
     c_r, c_c = rows // 2, cols // 2
-    r_size = int(rows * 0.10)
-    U[c_r-r_size:c_r+r_size, c_c-r_size:c_c+r_size] = 0.50
-    V[c_r-r_size:c_r+r_size, c_c-r_size:c_c+r_size] = 0.25
+    r_size = int(rows * 0.12)
+    for i in prange(rows):
+        for j in prange(cols):
+            if np.sqrt((i - c_r)**2 + (j - c_c)**2) < r_size:
+                U[i, j] = 0.50
+                V[i, j] = 0.25
     
+    # Add minor stochastic noise to break symmetry and spawn organic Turing structures
     np.random.seed(42)
     for i in prange(rows):
         for j in prange(cols):
@@ -194,7 +199,8 @@ def run_lagrangian_pipeline(pane, resolution):
     start_time = time.time()
     walkers = pane["walkers"]
     steps = pane["steps"]
-    scale = pane["step_scale"]
+    # Safely handle both 'scale' and 'step_scale' key names from frontend payloads
+    scale = float(pane.get("step_scale", pane.get("scale", 1.0)))
     engine = pane["engine"]
     
     x, y, h_x, h_y = run_particle_simulation(walkers, steps, scale, engine)
@@ -242,7 +248,7 @@ def run_batch():
         param4 = float(pane.get("param4", 0.0))
         try:
             if engine in ["grayscott", "bz_reaction"]:
-                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}, du={param3}, dv={param4}).")
+                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}).")
                 res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary, param1, param2, param3, param4)
             else:
                 logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
