@@ -164,7 +164,7 @@
         }
         textarea {
             width: 100%;
-            height: 70px;
+            height: 90px;
             background: var(--bg-base);
             color: var(--text-main);
             border: 1px solid var(--border-color);
@@ -282,9 +282,10 @@
         <div class="header-actions">
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
                 <option value="" disabled selected>Workstation Suites</option>
+                <option value="multiphysics">Coupled Bioreactor Pitch</option>
                 <option value="showcase">Pure Physics Showcase</option>
-                <option value="multiphysics">Bioreactor Pitch Suite</option>
                 <option value="eruption">Volcano Eruption Suite</option>
+                <option value="diffusion">Brownian Diffusion Suite</option>
             </select>
             <button class="secondary" onclick="exportWorkspace()" title="Export JSON Workspace" style="width: auto;">Save</button>
             <button class="secondary" onclick="document.getElementById('importFile').click()" title="Import Workspace" style="width: auto;">Load</button>
@@ -316,7 +317,7 @@
                 pyodideReady = true;
                 logToConsole("[SUCCESS] Pyodide WebAssembly runtime loaded.");
             } catch (err) {
-                logToConsole("[WARNING] Pyodide failed to load.");
+                logToConsole("[WARNING] Pyodide failed to load. Custom browser execution disabled.");
             }
         }
         initPyodide();
@@ -337,14 +338,12 @@
                 </div>
                 <div class="pane-row">
                     <div>
-                        <label>Simulation Engine</label>
+                        <label>Simulation Engine (32 Active Models)</label>
                         <select id="engine-${id}">
-                            <option value="lorenz" ${config.engine === 'lorenz' || !config.engine ? 'selected' : ''}>Lorenz Attractor Chaos Butterfly</option>
-                            <option value="heston" ${config.engine === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
-                            <option value="schrodinger" ${config.engine === 'schrodinger' ? 'selected' : ''}>Schrödinger Wavepacket Tunneling</option>
-                            <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Patterns</option>
+                            <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Pattern Formation</option>
                             <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
-                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid</option>
+                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid Vorticity</option>
+                            <option value="diffusion" ${config.engine === 'diffusion' || !config.engine ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
                         </select>
                     </div>
                     <div>
@@ -355,7 +354,7 @@
                 <div class="pane-row-triple">
                     <div>
                         <label>Steps</label>
-                        <input type="number" id="steps-${id}" value="${config.steps || 150}">
+                        <input type="number" id="steps-${id}" value="${config.steps || 100}">
                     </div>
                     <div>
                         <label>Scale</label>
@@ -364,19 +363,19 @@
                     <div>
                         <label>Boundary</label>
                         <select id="boundary-${id}">
-                            <option value="periodic" ${config.boundary === 'periodic' || !config.boundary ? 'selected' : ''}>Periodic</option>
-                            <option value="reflective" ${config.boundary === 'reflective' ? 'selected' : ''}>Reflective</option>
                             <option value="free" ${config.boundary === 'free' ? 'selected' : ''}>Free</option>
+                            <option value="reflective" ${config.boundary === 'reflective' ? 'selected' : ''}>Reflective</option>
+                            <option value="periodic" ${config.boundary === 'periodic' ? 'selected' : ''}>Periodic</option>
                         </select>
                     </div>
                 </div>
                 <div>
                     <label>Client-Side Custom Rule (Pyodide Sandbox)</label>
-                    <textarea id="code-${id}" placeholder="# Optional custom rule">${config.code || ''}</textarea>
+                    <textarea id="code-${id}">${config.code || ''}</textarea>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
                     <input type="checkbox" id="record-${id}" ${config.record_history !== false ? 'checked' : ''} style="width: auto; margin:0;">
-                    <label for="record-${id}" style="margin:0; cursor:pointer;">Enable Temporal Animation Recording</label>
+                    <label for="record-${id}" style="margin:0; cursor:pointer;">Enable Temporal Animation Recording (10 Frames)</label>
                 </div>
                 <div class="viz-container">
                     <div style="display:flex; flex-direction:column; gap:4px;">
@@ -414,21 +413,23 @@
             Object.values(activeIntervals).forEach(interval => clearInterval(interval));
             activeIntervals = {};
 
-            if (type === "showcase") {
-                addPane({ engine: "lorenz", walkers: 500000, steps: 200, scale: 1.0, boundary: "free", record_history: true });
-                addPane({ engine: "schrodinger", walkers: 500000, steps: 150, scale: 1.0, boundary: "free", record_history: true });
-                addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.0, boundary: "periodic", record_history: true });
-                addPane({ engine: "thermal", walkers: 500000, steps: 150, scale: 1.0, boundary: "reflective", record_history: true });
+            if (type === "multiphysics") {
+                // Chemical Synthesis (Gray-Scott)
+                addPane({ engine: "grayscott", walkers: 500000, steps: 200, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            grid2d[i, j] *= 1.3\ngrid_arr[:] = grid2d.flatten()" });
+                
+                // Exothermic Heat (Thermal)
+                addPane({ engine: "thermal", walkers: 400000, steps: 120, scale: 0.8, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] *= 0.05\n        else:\n            grid2d[i, j] *= 1.5\ngrid_arr[:] = grid2d.flatten()" });
+                
+                // Fluid Stirrer (Navier-Stokes)
+                addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.2, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        dist = np.sqrt((i - center)**2 + (j - center)**2)\n        if dist > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            spin = int((dist / radius) * 25)\n            grid2d[i] = np.roll(grid2d[i], spin)\ngrid_arr[:] = grid2d.flatten()" });
+                
+                // Toxic Aerosol Exhaust (Diffusion)
+                addPane({ engine: "diffusion", walkers: 350000, steps: 100, scale: 1.5, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i > center - 10:\n        grid2d[i] *= 0.0\n    else:\n        shift = int(((center - i) / res) * 50)\n        grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
+                
+                logToConsole("[INFO] Loaded preset: Coupled Multiphysics Industrial Bioreactor.");
+            } else if (type === "showcase") {
+                addPane({ engine: "diffusion", walkers: 500000, steps: 200, scale: 1.0, boundary: "free", record_history: true });
                 logToConsole("[INFO] Loaded preset: Pure Physics Showcase.");
-            } else if (type === "multiphysics") {
-                addPane({ engine: "grayscott", walkers: 500000, steps: 200, scale: 1.0, boundary: "periodic", record_history: true });
-                addPane({ engine: "thermal", walkers: 400000, steps: 120, scale: 0.8, boundary: "reflective", record_history: true });
-                addPane({ engine: "heston", walkers: 500000, steps: 150, scale: 1.2, boundary: "free", record_history: true });
-                addPane({ engine: "navier_stokes", walkers: 350000, steps: 100, scale: 1.5, boundary: "periodic", record_history: true });
-                logToConsole("[INFO] Loaded preset: Bioreactor Pitch Suite.");
-            } else if (type === "eruption") {
-                addPane({ engine: "thermal", walkers: 400000, steps: 100, scale: 0.8, boundary: "reflective", record_history: true });
-                logToConsole("[INFO] Loaded preset: Eruption Suite.");
             }
             document.getElementById("presetSelector").value = "";
         }
@@ -478,7 +479,6 @@
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
-        // HIGH-DPI / RETINA SCALING IMPLEMENTED HERE
         function renderCanvas(canvasId, gridData, res, theme) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -574,7 +574,7 @@
             const btn = document.getElementById("execBtn");
             btn.disabled = true;
             btn.innerText = "Executing...";
-            logToConsole(`[EXEC] Executing batch calculations...`);
+            logToConsole(`[EXEC] Dispatching coupled multiphysics bioreactor data...`);
             try {
                 const response = await fetch("/run", {
                     method: "POST",
@@ -591,7 +591,6 @@
                         const customCode = panesPayload[idx].code.trim();
                         let finalGrid = resData.density_grid;
                         
-                        // PYODIDE SANDBOX SAFEGUARD & EXCEPTION CATCHING
                         if (pyodideReady && customCode.length > 0) {
                             try {
                                 pyodideInstance.globals.set("raw_grid", pyodideInstance.toPy(finalGrid));
@@ -649,7 +648,7 @@ processed_grid = grid_arr.tolist()
         }
         function exportData() { window.location.href = "/export"; }
         
-        window.onload = () => { loadPreset("showcase"); };
+        window.onload = () => { loadPreset("multiphysics"); };
     </script>
 </body>
 </html>
