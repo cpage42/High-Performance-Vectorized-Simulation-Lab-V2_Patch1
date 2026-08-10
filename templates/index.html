@@ -467,16 +467,9 @@
             activeIntervals = {};
 
             if (type === "multiphysics") {
-                // Pane 1: Clean circular mask without multiplier saturation so Turing patterns bloom correctly
                 addPane({ engine: "grayscott", param1: 0.055, param2: 0.062, steps: 350, scale: 1.0, record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] = 0.0\ngrid_arr[:] = grid2d.flatten()" });
-                
-                // Pane 2: Thermal Overload with clean flask mask
                 addPane({ engine: "thermal", walkers: 400000, steps: 120, scale: 0.8, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] = 0.0\ngrid_arr[:] = grid2d.flatten()" });
-                
-                // Pane 3: Fluid Stirrer with swirling rotational shift
                 addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.2, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        dist = np.sqrt((i - center)**2 + (j - center)**2)\n        if dist > radius:\n            grid2d[i, j] = 0.0\n        else:\n            spin = int((dist / radius) * 25)\n            grid2d[i] = np.roll(grid2d[i], spin)\ngrid_arr[:] = grid2d.flatten()" });
-                
-                // Pane 4: Toxic Aerosol Exhaust / HVAC Drift
                 addPane({ engine: "diffusion", walkers: 350000, steps: 100, scale: 1.5, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i > center - 10:\n        grid2d[i] *= 0.0\n    else:\n        shift = int(((center - i) / res) * 50)\n        grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
 
                 logToConsole("[INFO] Loaded preset: Coupled Bioreactor Pitch.");
@@ -688,7 +681,7 @@ processed_grid = grid_arr.tolist()
 
                         if (activeIntervals[cardId]) {
                             clearInterval(activeIntervals[cardId]);
-                            delete activeIntervals[cardId]);
+                            delete activeIntervals[cardId];
                         }
 
                         if (resData.history && resData.history.length > 0) {
