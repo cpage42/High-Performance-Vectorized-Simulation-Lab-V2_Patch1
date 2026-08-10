@@ -31,9 +31,19 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", du=0.2, dv=0.1,
             U[i, j] += np.random.normal(0, 0.02)
             V[i, j] += np.random.normal(0, 0.02)
 
-    history = []
+    # Pre-allocate history array for Numba compatibility (avoids .tolist() inside JIT)
+    max_frames = 15
+    history_arr = np.zeros((max_frames, rows, cols), dtype=np.float32)
+    frame_count = 0
+    interval = max(1, steps // 10)
     
     for s in range(steps):
+        if s % interval == 0 and frame_count < max_frames:
+            for ii in prange(rows):
+                for jj in prange(cols):
+                    history_arr[frame_count, ii, jj] = V[ii, jj]
+            frame_count += 1
+
         U_new = np.copy(U)
         V_new = np.copy(V)
         
@@ -66,17 +76,16 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", du=0.2, dv=0.1,
                 V_new[i, j] = V[i, j] + (dv * lap_v + uvv - (f + k) * V[i, j]) * dt
                 
         U, V = U_new, V_new
-        
-        if s % max(1, steps // 10) == 0:
-            history.append(V.flatten().astype(np.float64).tolist())
             
-    return V, history
+    return V, history_arr, frame_count
 
 def run_eulerian_pipeline(engine, resolution, steps, boundary):
     start_time = time.time()
     
     if engine in ["grayscott", "bz_reaction"]:
-        grid, history = solve_grayscott_grid(resolution, resolution, steps, boundary)
+        grid, hist_arr, frame_count = solve_grayscott_grid(resolution, resolution, steps, boundary)
+        # Convert history array to Python list outside the JIT boundary
+        history = [hist_arr[i].flatten().astype(np.float64).tolist() for i in range(frame_count)]
     else:
         grid = np.zeros((resolution, resolution), dtype=np.float32)
         history = []
@@ -105,7 +114,7 @@ def run_eulerian_pipeline(engine, resolution, steps, boundary):
     }
 
 # ============================================================================
-# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines with Explicit Types)
+# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines)
 # ============================================================================
 
 @jit(nopython=True)
@@ -120,10 +129,7 @@ def run_particle_simulation(walkers, steps, scale, engine_type):
     f32_8 = np.float32(8.0)
     f32_dt_lorenz = np.float32(0.005)
     f32_dt_heston = np.float32(0.01)
-    f32_zero2 = np.float32(0.02)
     f32_zero5 = np.float32(0.05)
-    f32_zero8 = np.float32(0.08)
-    f32_one1 = np.float32(0.1)
     
     for s in range(steps):
         if engine_type == "lorenz":
