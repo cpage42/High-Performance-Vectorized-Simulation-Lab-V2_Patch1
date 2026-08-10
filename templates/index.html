@@ -164,14 +164,14 @@
         }
         textarea {
             width: 100%;
-            height: 60px;
+            height: 80px;
             background: var(--bg-base);
             color: var(--text-main);
             border: 1px solid var(--border-color);
             border-radius: 4px;
             padding: 8px;
             font-family: inherit;
-            font-size: 11px;
+            font-size: 10px;
             resize: vertical;
             box-sizing: border-box;
             outline: none;
@@ -278,8 +278,8 @@
         <div class="header-actions">
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
                 <option value="" disabled selected>Workstation Suites</option>
-                <option value="diffusion">Brownian Diffusion Suite</option>
                 <option value="eruption">Volcano Eruption Suite</option>
+                <option value="diffusion">Brownian Diffusion Suite</option>
                 <option value="quant">Quant Risk Suite</option>
                 <option value="physics">Physics & Quantum</option>
                 <option value="chaos">Chaos & Dynamics</option>
@@ -334,13 +334,10 @@
                 </div>
                 <div class="pane-row">
                     <div>
-                        <label>Simulation Engine (33 Active Models)</label>
+                        <label>Simulation Engine (32 Active Models)</label>
                         <select id="engine-${id}">
                             <optgroup label="[Default / Diffusion]">
                                 <option value="diffusion" ${config.engine === 'diffusion' || !config.engine ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
-                            </optgroup>
-                            <optgroup label="[05. Environmental & Earth Systems]">
-                                <option value="volcano_weather" ${config.engine === 'volcano_weather' ? 'selected' : ''}>Volcano Ash & Multi-Layer Weather Dispersion</option>
                             </optgroup>
                             <optgroup label="[01. Quantitative Finance & Derivatives]">
                                 <option value="heston" ${config.engine === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
@@ -444,14 +441,19 @@
             const grid = document.getElementById("paneGrid");
             grid.innerHTML = "";
             paneCount = 0;
-            if (type === "diffusion") {
+            if (type === "eruption") {
+                addPane({ engine: "thermal", walkers: 200000, steps: 80, scale: 0.4, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i < int(res * 0.35):\n        mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * 0.12)**2))\n        grid2d[i] *= mask * 2.0\n    else:\n        grid2d[i] *= 0.05\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "langevin", walkers: 400000, steps: 100, scale: 0.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    width = 0.04 + 0.06 * (i / res)\n    mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * width)**2))\n    grid2d[i] *= mask\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "navier_stokes", walkers: 500000, steps: 100, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    turbulence = int(np.sin(i * 0.25) * 6)\n    grid2d[i] = np.roll(grid2d[i], turbulence)\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "diffusion", walkers: 400000, steps: 120, scale: 1.2, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    shift = int((i / res) * 18)\n    grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "lorenz96", walkers: 500000, steps: 150, scale: 1.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    shear = int((i / res) * 55)\n    grid2d[i] = np.roll(grid2d[i], shear)\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "ou", walkers: 300000, steps: 100, scale: 0.7, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nceiling = int(res * 0.75)\ngrid2d[ceiling:] = 0 \nhorizontal_spread = np.ones(res) * 0.8\ngrid2d[ceiling-6:ceiling, :] += horizontal_spread\ngrid_arr[:] = grid2d.flatten()" });
+                logToConsole("[INFO] Loaded preset: Stratified Volcano Eruption Suite.");
+            } else if (type === "diffusion") {
                 addPane({ engine: "diffusion", scale: 1.0 });
                 addPane({ engine: "diffusion", scale: 0.5 });
                 addPane({ engine: "diffusion", scale: 2.0 });
                 logToConsole("[INFO] Loaded preset: Brownian Diffusion Suite.");
-            } else if (type === "eruption") {
-                addPane({ engine: "volcano_weather", scale: 1.0, steps: 150 });
-                logToConsole("[INFO] Loaded preset: Volcano Eruption Suite.");
             } else if (type === "quant") {
                 addPane({ engine: "heston", scale: 1.0 });
                 addPane({ engine: "sabr", scale: 1.0 });
@@ -627,7 +629,6 @@
                             try {
                                 pyodideInstance.globals.set("raw_grid", pyodideInstance.toPy(finalGrid));
                                 
-                                // Execute code at the root scope, eliminating all indentation errors
                                 const pyCode = `
 import numpy as np
 grid_arr = np.array(raw_grid, dtype=np.float32)
@@ -671,7 +672,9 @@ processed_grid = grid_arr.tolist()
             }
         }
         function exportData() { window.location.href = "/export"; }
-        addPane({ engine: "diffusion", scale: 1.0 });
+        
+        // Initialize the default 6-Pane Volcano simulation
+        loadPreset("eruption");
     </script>
 </body>
 </html>
