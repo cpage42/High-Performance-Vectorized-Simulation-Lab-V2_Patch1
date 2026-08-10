@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>High-Performance Simulation Workstation</title>
-    <!-- Pyodide Client-Side Python Sandbox -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <style>
         :root {
@@ -316,9 +315,10 @@
         <div class="header-actions">
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 130px;">
                 <option value="" disabled selected>Presets</option>
-                <option value="engines">Comparative Engines</option>
-                <option value="sweep">Sensitivity Sweep</option>
-                <option value="temporal">Temporal Horizon</option>
+                <option value="quant">Quant Matrix</option>
+                <option value="physics">Physics Matrix</option>
+                <option value="chaos">Chaos Matrix</option>
+                <option value="astro">Astrophysics Matrix</option>
             </select>
             <button class="secondary" onclick="exportWorkspace()" title="Export JSON Workspace" style="width: auto;">Save</button>
             <button class="secondary" onclick="document.getElementById('importFile').click()" title="Import Workspace" style="width: auto;">Load</button>
@@ -377,13 +377,48 @@
 
                 <div class="pane-row">
                     <div>
-                        <label>Core Physics/Chem Engine</label>
+                        <label>Simulation Engine (32 Active Models)</label>
                         <select id="engine-${id}">
-                            <option value="diffusion" ${config.engine === 'diffusion' ? 'selected' : ''}>Brownian Diffusion</option>
-                            <option value="ou" ${config.engine === 'ou' ? 'selected' : ''}>Ornstein-Uhlenbeck</option>
-                            <option value="langevin" ${config.engine === 'langevin' ? 'selected' : ''}>Langevin Dynamics (Trap)</option>
-                            <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Thermal Conduction</option>
-                            <option value="kinetics" ${config.engine === 'kinetics' ? 'selected' : ''}>Chemical Kinetics (Concentration)</option>
+                            <optgroup label="[01. Quantitative Finance & Derivatives]">
+                                <option value="heston" ${config.engine === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
+                                <option value="merton" ${config.engine === 'merton' ? 'selected' : ''}>Merton Jump-Diffusion</option>
+                                <option value="black_scholes" ${config.engine === 'black_scholes' ? 'selected' : ''}>Black-Scholes Monte Carlo</option>
+                                <option value="garch" ${config.engine === 'garch' ? 'selected' : ''}>GARCH(1,1) Volatility Clustering</option>
+                                <option value="vasicek" ${config.engine === 'vasicek' ? 'selected' : ''}>Vasicek Interest Rate Model</option>
+                                <option value="cir" ${config.engine === 'cir' ? 'selected' : ''}>Cox-Ingersoll-Ross (CIR)</option>
+                                <option value="bates" ${config.engine === 'bates' ? 'selected' : ''}>Bates Stochastic Volatility + Jumps</option>
+                                <option value="cev" ${config.engine === 'cev' ? 'selected' : ''}>Constant Elasticity of Variance (CEV)</option>
+                                <option value="sabr" ${config.engine === 'sabr' ? 'selected' : ''}>SABR Stochastic Volatility Model</option>
+                                <option value="var_jump" ${config.engine === 'var_jump' ? 'selected' : ''}>VaR Tail-Risk Shock Monte Carlo</option>
+                            </optgroup>
+                            <optgroup label="[02. Advanced Physics & Quantum Mechanics]">
+                                <option value="diffusion" ${config.engine === 'diffusion' ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
+                                <option value="ou" ${config.engine === 'ou' ? 'selected' : ''}>Ornstein-Uhlenbeck (Mean Reverting)</option>
+                                <option value="langevin" ${config.engine === 'langevin' ? 'selected' : ''}>Langevin Dynamics (Harmonic Trap)</option>
+                                <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
+                                <option value="quantum" ${config.engine === 'quantum' ? 'selected' : ''}>Quantum Harmonic Oscillator Phase-Space</option>
+                                <option value="schrodinger" ${config.engine === 'schrodinger' ? 'selected' : ''}>Schrödinger Wavepacket Tunneling</option>
+                                <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid Vorticity</option>
+                                <option value="lorentz_force" ${config.engine === 'lorentz_force' ? 'selected' : ''}>Charged Particle in Crossed E&B Fields</option>
+                                <option value="kramers" ${config.engine === 'kramers' ? 'selected' : ''}>Kramers Thermal Barrier Escape</option>
+                            </optgroup>
+                            <optgroup label="[03. Nonlinear Dynamics, Chaos & Complex Systems]">
+                                <option value="kinetics" ${config.engine === 'kinetics' ? 'selected' : ''}>Lotka-Volterra Chemical Kinetics</option>
+                                <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Pattern Formation</option>
+                                <option value="lennard_jones" ${config.engine === 'lennard_jones' ? 'selected' : ''}>Lennard-Jones Molecular Dynamics</option>
+                                <option value="sir" ${config.engine === 'sir' ? 'selected' : ''}>SIR Epidemic Compartmental Diffusion</option>
+                                <option value="ising" ${config.engine === 'ising' ? 'selected' : ''}>2D Ising Spin Lattice Phase Transition</option>
+                                <option value="burgers" ${config.engine === 'burgers' ? 'selected' : ''}>Burgers' Equation Shockwave Dispersion</option>
+                                <option value="lorenz" ${config.engine === 'lorenz' ? 'selected' : ''}>Lorenz Attractor Chaos Butterfly</option>
+                                <option value="bz_reaction" ${config.engine === 'bz_reaction' ? 'selected' : ''}>Belousov-Zhabotinsky Oscillating Chemical</option>
+                                <option value="lorenz96" ${config.engine === 'lorenz96' ? 'selected' : ''}>Lorenz-96 Atmospheric Weather Chaos</option>
+                            </optgroup>
+                            <optgroup label="[04. Astrophysics & Space Physics]">
+                                <option value="keplerian" ${config.engine === 'keplerian' ? 'selected' : ''}>Keplerian Orbital Dynamics</option>
+                                <option value="hubble_flow" ${config.engine === 'hubble_flow' ? 'selected' : ''}>Cosmological Hubble Expansion</option>
+                                <option value="stellar_cluster" ${config.engine === 'stellar_cluster' ? 'selected' : ''}>Stellar Cluster Gravitational Relaxation</option>
+                                <option value="nbody_ring" ${config.engine === 'nbody_ring' ? 'selected' : ''}>N-Body Lagrange Point Stability Ring</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div>
@@ -454,21 +489,26 @@
             grid.innerHTML = "";
             paneCount = 0;
 
-            if (type === "engines") {
-                addPane({ engine: "thermal", scale: 1.0 });
-                addPane({ engine: "langevin", scale: 1.0 });
-                addPane({ engine: "kinetics", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Advanced Physics & Chemistry Matrix.");
-            } else if (type === "sweep") {
-                addPane({ engine: "thermal", scale: 0.5 });
-                addPane({ engine: "thermal", scale: 1.0 });
-                addPane({ engine: "thermal", scale: 2.0 });
-                logToConsole("[INFO] Loaded preset: Thermal Sensitivity Sweep.");
-            } else if (type === "temporal") {
-                addPane({ engine: "langevin", steps: 25, record_history: true });
-                addPane({ engine: "langevin", steps: 100, record_history: true });
-                addPane({ engine: "langevin", steps: 300, record_history: true });
-                logToConsole("[INFO] Loaded preset: Langevin Temporal Horizon.");
+            if (type === "quant") {
+                addPane({ engine: "heston", scale: 1.0 });
+                addPane({ engine: "sabr", scale: 1.0 });
+                addPane({ engine: "garch", scale: 1.0 });
+                logToConsole("[INFO] Loaded preset: Quantitative Finance & Derivatives Matrix.");
+            } else if (type === "physics") {
+                addPane({ engine: "schrodinger", scale: 1.0 });
+                addPane({ engine: "navier_stokes", scale: 1.0 });
+                addPane({ engine: "lorentz_force", scale: 1.0 });
+                logToConsole("[INFO] Loaded preset: Advanced Physics & Quantum Matrix.");
+            } else if (type === "chaos") {
+                addPane({ engine: "lorenz", scale: 1.0 });
+                addPane({ engine: "burgers", scale: 1.0 });
+                addPane({ engine: "lorenz96", scale: 1.0 });
+                logToConsole("[INFO] Loaded preset: Nonlinear Dynamics & Chaos Matrix.");
+            } else if (type === "astro") {
+                addPane({ engine: "keplerian", scale: 1.0 });
+                addPane({ engine: "hubble_flow", scale: 1.0 });
+                addPane({ engine: "nbody_ring", scale: 1.0 });
+                logToConsole("[INFO] Loaded preset: Astrophysics & Space Physics Matrix.");
             }
             document.getElementById("presetSelector").value = "";
         }
@@ -668,7 +708,7 @@
 
         function exportData() { window.location.href = "/export"; }
 
-        addPane({ engine: "thermal", scale: 1.0 });
+        addPane({ engine: "heston", scale: 1.0 });
     </script>
 </body>
 </html>
