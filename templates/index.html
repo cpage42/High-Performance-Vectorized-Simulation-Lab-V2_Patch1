@@ -344,6 +344,7 @@
                         <label>Simulation Engine</label>
                         <select id="engine-${id}" onchange="toggleEngineParams(${id})">
                             <option value="grayscott" ${engineType === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Patterns</option>
+                            <option value="diffusion" ${engineType === 'diffusion' ? 'selected' : ''}>Brownian Diffusion (Exhaust/Waste)</option>
                             <option value="lorenz" ${engineType === 'lorenz' ? 'selected' : ''}>Lorenz Attractor Chaos</option>
                             <option value="heston" ${engineType === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
                             <option value="schrodinger" ${engineType === 'schrodinger' ? 'selected' : ''}>Schrödinger Wavepacket</option>
@@ -373,9 +374,9 @@
                         <div id="boundaryBox-${id}" style="${isGridEngine ? 'display:none;' : ''}">
                             <label>Boundary</label>
                             <select id="boundary-${id}">
-                                <option value="periodic" ${config.boundary === 'periodic' || !config.boundary ? 'selected' : ''}>Periodic</option>
+                                <option value="periodic" ${config.boundary === 'periodic' ? 'selected' : ''}>Periodic</option>
                                 <option value="reflective" ${config.boundary === 'reflective' ? 'selected' : ''}>Reflective</option>
-                                <option value="free" ${config.boundary === 'free' ? 'selected' : ''}>Free</option>
+                                <option value="free" ${config.boundary === 'free' || !config.boundary ? 'selected' : ''}>Free</option>
                             </select>
                         </div>
                     </div>
@@ -460,8 +461,8 @@
                 // Pane 3: Fluid Stirrer with swirling rotational shift
                 addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.2, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        dist = np.sqrt((i - center)**2 + (j - center)**2)\n        if dist > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            spin = int((dist / radius) * 25)\n            grid2d[i] = np.roll(grid2d[i], spin)\ngrid_arr[:] = grid2d.flatten()" });
                 
-                // Pane 4: Toxic Aerosol Exhaust / HVAC Drift
-                addPane({ engine: "heston", walkers: 350000, steps: 100, scale: 1.5, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i > center - 10:\n        grid2d[i] *= 0.0\n    else:\n        shift = int(((center - i) / res) * 50)\n        grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
+                // Pane 4: Toxic Aerosol Exhaust / HVAC Drift (Diffusion engine)
+                addPane({ engine: "diffusion", walkers: 350000, steps: 100, scale: 1.5, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i > center - 10:\n        grid2d[i] *= 0.0\n    else:\n        shift = int(((center - i) / res) * 50)\n        grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
 
                 logToConsole("[INFO] Loaded preset: Coupled Bioreactor Pitch.");
             } else if (type === "showcase") {
