@@ -10,8 +10,15 @@ app = Flask(__name__)
 # ============================================================================
 
 @jit(nopython=True, parallel=True)
-def solve_grayscott_grid(rows, cols, steps, du=0.2, dv=0.1, f=0.036, k=0.065, dt=1.0):
-    """Numba-accelerated Gray-Scott Reaction-Diffusion Stencil Solver"""
+def solve_grayscott_grid(rows, cols, steps, boundary="periodic", du=0.2, dv=0.1, f=0.036, k=0.065):
+    """Numba-accelerated Gray-Scott Stencil Solver with adaptive CFL stability & boundaries"""
+    # CFL Stability condition check: dt <= dx^2 / (4 * max(du, dv))
+    dx = 1.0 / rows
+    max_d = max(du, dv)
+    dt = 0.4 * (dx ** 2) / max_d
+    if dt > 1.0:
+        dt = 1.0
+
     U = np.ones((rows, cols), dtype=np.float32)
     V = np.zeros((rows, cols), dtype=np.float32)
     
@@ -35,13 +42,29 @@ def solve_grayscott_grid(rows, cols, steps, du=0.2, dv=0.1, f=0.036, k=0.065, dt
         V_new = np.copy(V)
         
         for i in prange(1, rows - 1):
-            for j in prange(cols - 1):
-                jp = (j + 1) % cols
-                jm = (j - 1 + cols) % cols
-                
-                # 5-point Laplacian stencil
-                lap_u = (U[i-1, j] + U[i+1, j] + U[i, jm] + U[i, jp] - 4.0 * U[i, j])
-                lap_v = (V[i-1, j] + V[i+1, j] + V[i, jm] + V[i, jp] - 4.0 * V[i, j])
+            for j in prange(1, cols - 1):
+                if boundary == "periodic":
+                    ip = (i + 1) % rows
+                    im = (i - 1 + rows) % rows
+                    jp = (j + 1) % cols
+                    jm = (j - 1 + cols) % cols
+                    lap_u = U[im, j] + U[ip, j] + U[i, jm] + U[i, jp] - 4.0 * U[i, j]
+                    lap_v = V[im, j] + V[ip, j] + V[i, jm] + V[i, jp] - 4.0 * V[i, j]
+                elif boundary == "reflective":
+                    # Neumann boundary condition (zero gradient at walls)
+                    ip = i + 1 if i + 1 < rows else i
+                    im = i - 1 if i - 1 >= 0 else i
+                    jp = j + 1 if j + 1 < cols else j
+                    jm = j - 1 if j - 1 >= 0 else j
+                    lap_u = U[im, j] + U[ip, j] + U[i, jm] + U[i, jp] - 4.0 * U[i, j]
+                    lap_v = V[im, j] + V[ip, j] + V[i, jm] + V[i, jp] - 4.0 * V[i, j]
+                else:  # "free" / absorbing boundaries
+                    ip = i + 1 if i + 1 < rows else rows - 1
+                    im = i - 1 if i - 1 >= 0 else 0
+                    jp = j + 1 if j + 1 < cols else cols - 1
+                    jm = j - 1 if j - 1 >= 0 else 0
+                    lap_u = U[im, j] + U[ip, j] + U[i, jm] + U[i, jp] - 4.0 * U[i, j]
+                    lap_v = V[im, j] + V[ip, j] + V[i, jm] + V[i, jp] - 4.0 * V[i, j]
                 
                 uvv = U[i, j] * V[i, j] * V[i, j]
                 
@@ -50,30 +73,41 @@ def solve_grayscott_grid(rows, cols, steps, du=0.2, dv=0.1, f=0.036, k=0.065, dt
                 
         U, V = U_new, V_new
         
-        # Capture frames for temporal playback history (10 frames)
+        # Capture downsampled history frames to completely eliminate JSON payload bloat
         if s % max(1, steps // 10) == 0:
-            history.append(V.flatten().astype(np.float64).tolist())
+            h_small = V[::2, ::2] if rows > 100 else V
+            history.append(h_small.flatten().astype(np.float64).tolist())
             
     return V, history
 
-def run_eulerian_pipeline(engine, resolution, steps):
-    """Dispatcher for grid-based continuum models"""
+def run_eulerian_pipeline(engine, resolution, steps, boundary):
     start_time = time.time()
     
     if engine in ["grayscott", "bz_reaction"]:
-        grid, history = solve_grayscott_grid(resolution, resolution, steps)
+        grid, history = solve_grayscott_grid(resolution, resolution, steps, boundary)
     else:
         grid = np.zeros((resolution, resolution), dtype=np.float32)
         history = []
 
     elapsed_ms = (time.time() - start_time) * 1000.0
     
+    # Contextual Eulerian Field Metrics
     flat = grid.flatten()
+    total_mass = float(np.sum(flat))
+    peak_concentration = float(np.max(flat))
+    
+    y_indices, x_indices = np.indices(grid.shape)
+    if total_mass > 0:
+        com_x = float(np.sum(x_indices * grid) / total_mass)
+        com_y = float(np.sum(y_indices * grid) / total_mass)
+    else:
+        com_x, com_y = 0.0, 0.0
+
     metrics = {
-        "centroid_x": float(np.mean(flat)),
-        "centroid_y": float(np.std(flat)),
-        "std_x": float(np.max(flat)),
-        "std_y": float(np.min(flat))
+        "centroid_x": round(com_x, 2),
+        "centroid_y": round(com_y, 2),
+        "std_x": round(peak_concentration, 4),
+        "std_y": round(total_mass, 2)
     }
     
     return {
@@ -89,7 +123,6 @@ def run_eulerian_pipeline(engine, resolution, steps):
 
 @jit(nopython=True)
 def run_particle_simulation(walkers, steps, scale, engine_type):
-    """Existing Numba particle simulation kernel"""
     x = np.random.randn(walkers).astype(np.float32) * scale
     y = np.random.randn(walkers).astype(np.float32) * scale
     
@@ -113,7 +146,6 @@ def run_particle_simulation(walkers, steps, scale, engine_type):
     return x, y, history_x, history_y
 
 def run_lagrangian_pipeline(pane, resolution):
-    """Dispatcher for particle/stochastic models"""
     start_time = time.time()
     walkers = pane["walkers"]
     steps = pane["steps"]
@@ -129,7 +161,7 @@ def run_lagrangian_pipeline(pane, resolution):
     if pane.get("record_history", False):
         for i in range(len(h_x)):
             hg, _, _ = np.histogram2d(h_y[i], h_x[i], bins=resolution, range=[[-15, 15], [-15, 15]])
-            history.append(hg.flatten().astype(np.float64).tolist())
+            history.append(hg[::2, ::2].flatten().astype(np.float64).tolist())
 
     elapsed_ms = (time.time() - start_time) * 1000.0
     flat_grid = grid.flatten()
@@ -162,10 +194,11 @@ def run_batch():
 
     for idx, pane in enumerate(panes):
         engine = pane["engine"]
+        boundary = pane.get("boundary", "periodic")
         
         if engine in ["grayscott", "bz_reaction"]:
-            logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver.")
-            res_data = run_eulerian_pipeline(engine, resolution, pane["steps"])
+            logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}).")
+            res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary)
         else:
             logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
             res_data = run_lagrangian_pipeline(pane, resolution)
