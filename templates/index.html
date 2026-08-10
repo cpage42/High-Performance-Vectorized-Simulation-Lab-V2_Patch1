@@ -2,165 +2,673 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>High-Performance Simulation Sandbox</title>
+    <title>High-Performance Simulation Workstation</title>
+    <!-- Pyodide Client-Side Python Sandbox -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <style>
-        body { font-family: monospace; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
-        .container { display: flex; gap: 20px; }
-        .controls { flex: 1; background: #1e1e1e; padding: 20px; border-radius: 8px; }
-        .viewport { flex: 2; background: #1e1e1e; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; }
-        input, select, textarea, button { width: 100%; margin-bottom: 10px; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; box-sizing: border-box; }
-        textarea { height: 160px; font-family: monospace; }
-        button { background: #00bcd4; color: #000; font-weight: bold; cursor: pointer; }
-        button:hover { background: #00acc1; }
-        .btn-export { background: #4caf50; color: #fff; margin-top: 5px; display: none; }
-        .btn-export:hover { background: #43a047; }
-        canvas { background: #000; border: 1px solid #333; width: 100%; max-width: 600px; height: 600px; }
-        .telemetry { margin-top: 15px; background: #121212; padding: 12px; border-radius: 4px; border: 1px solid #333; font-size: 13px; color: #00bcd4; display: none; width: 100%; box-sizing: border-box; line-height: 1.5; }
-        .hw-badge { background: #252525; padding: 10px; border-radius: 4px; border: 1px solid #444; margin-bottom: 15px; font-size: 12px; color: #ff9800; line-height: 1.4; }
+        :root {
+            --bg-base: #0d0d0e;
+            --bg-surface: #161618;
+            --bg-card: #202024;
+            --border-color: #2e2e34;
+            --accent-green: #10b981;
+            --accent-green-hover: #059669;
+            --accent-amber: #f59e0b;
+            --text-main: #ededef;
+            --text-muted: #8e8e9a;
+        }
+
+        body {
+            font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+            background: var(--bg-base);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .header-title h1 {
+            font-size: 16px;
+            margin: 0;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+            font-weight: 700;
+        }
+
+        .header-title p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 3px 0 0 0;
+        }
+
+        .global-controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            background: var(--bg-base);
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .control-group label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button, select, input {
+            font-family: inherit;
+            font-size: 12px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            border-radius: 4px;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.15s ease;
+            width: 100%;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: 600;
+            width: auto;
+        }
+
+        button.primary {
+            background: var(--accent-green);
+            color: #000;
+            border: none;
+        }
+        button.primary:hover {
+            background: var(--accent-green-hover);
+        }
+
+        button.secondary {
+            background: var(--bg-card);
+        }
+        button.secondary:hover {
+            background: var(--border-color);
+        }
+
+        button.success {
+            background: #22c55e;
+            color: #000;
+            border: none;
+        }
+
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+
+        .pane-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .pane-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .pane-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .pane-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 10px;
+        }
+
+        .pane-row-triple {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 60px;
+            background: var(--bg-base);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 11px;
+            resize: vertical;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .viz-container {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            background: var(--bg-base);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        canvas {
+            background: #000;
+            border: 1px solid var(--border-color);
+            width: 150px;
+            height: 150px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .pane-stats {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .pane-stats strong {
+            color: var(--text-main);
+        }
+
+        .playback-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .terminal-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        .console-box {
+            background: var(--bg-base);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 11px;
+            height: 100px;
+            overflow-y: auto;
+            color: var(--accent-green);
+            line-height: 1.45;
+        }
+
+        .hw-badge {
+            font-size: 11px;
+            color: var(--accent-amber);
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-    <h1>Vectorized Simulation Sandbox</h1>
-    <div class="container">
-        <div class="controls">
-            <div class="hw-badge" id="hwBadge">
-                <strong>Hardware Status:</strong> Loading system specs...
+
+    <header>
+        <div class="header-title">
+            <h1>Simulation Workstation</h1>
+            <p>High-Performance Multi-Panel Vectorized Engine</p>
+        </div>
+
+        <div class="global-controls">
+            <div class="hw-badge" id="hwBadge">Loading RAM specs...</div>
+            
+            <div class="control-group">
+                <label>RAM Ratio (%)</label>
+                <input type="number" id="ram_ratio" min="5" max="80" step="5" value="20" onchange="updateAllocation()" style="width: 65px;">
             </div>
 
-            <h3>Allocation Settings</h3>
-            <label>RAM Allocation Ratio (%):</label>
-            <input type="number" id="ram_ratio" min="5" max="80" step="5" value="20" onchange="updateAllocation()">
-            <label>Max Hardware Walkers (Cap):</label>
-            <input type="text" id="maxWalkersDisplay" readonly style="background: #1a1a1a; color: #888;">
+            <div class="control-group">
+                <label>Resolution (px)</label>
+                <input type="number" id="heatmapRes" min="50" max="300" step="25" value="200" style="width: 75px;">
+            </div>
 
-            <h3>Select Core Engine</h3>
-            <select id="engine_type">
-                <option value="diffusion">Brownian Diffusion / Random Walk</option>
-                <option value="ou">Ornstein-Uhlenbeck (Mean-Reverting)</option>
-                <option value="drift">Linear Vector Drift / Flow</option>
-            </select>
-
-            <h3>Engine Parameters</h3>
-            <label>Walkers / Particles:</label>
-            <input type="number" id="walkers" value="100000">
-            <label>Steps:</label>
-            <input type="number" id="steps" value="100">
-            <label>Step Scale / Variance:</label>
-            <input type="number" step="0.1" id="step_scale" value="1.0">
-
-            <h3>Custom Python Rule (Optional)</h3>
-            <textarea id="user_code" placeholder="# Write your custom function here:
-# def custom_rule(x, y):
-#     return x, y"></textarea>
-            <button onclick="runSimulation()">Execute Simulation</button>
+            <div class="control-group">
+                <label>Theme</label>
+                <select id="heatmapColor">
+                    <option value="fire">Thermal</option>
+                    <option value="ice">Cryo</option>
+                    <option value="matrix">Matrix</option>
+                    <option value="mono">Mono</option>
+                </select>
+            </div>
         </div>
-        <div class="viewport">
-            <h3>Real-Time Output Viewport</h3>
-            <canvas id="simCanvas" width="600" height="600"></canvas>
-            <button id="exportBtn" class="btn-export" onclick="exportData()">Export Coordinates (CSV)</button>
-            <div id="telemetryBox" class="telemetry">
-                <div><strong>Status:</strong> <span id="telStatus" style="color: #4caf50;">Success</span> (JIT: <span id="telJit"></span>)</div>
-                <div><strong>Engine Time:</strong> <span id="telEngine"></span> ms | <strong>Total Time:</strong> <span id="telTotal"></span> ms</div>
-                <hr style="border: 0; border-top: 1px solid #333; margin: 8px 0;">
-                <div><strong>Centroid (X, Y):</strong> (<span id="telCx"></span>, <span id="telCy"></span>)</div>
-                <div><strong>Spread (Std Dev):</strong> X: <span id="telSx"></span> | Y: <span id="telSy"></span></div>
-                <div><strong>Bounding Box:</strong> X[<span id="telMinX"></span>, <span id="telMaxX"></span>] Y[<span id="telMinY"></span>, <span id="telMaxY"></span>]</div>
+
+        <div class="header-actions">
+            <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 130px;">
+                <option value="" disabled selected>Presets</option>
+                <option value="engines">Comparative Engines</option>
+                <option value="sweep">Sensitivity Sweep</option>
+                <option value="temporal">Temporal Horizon</option>
+            </select>
+            <button class="secondary" onclick="exportWorkspace()" title="Export JSON Workspace" style="width: auto;">Save</button>
+            <button class="secondary" onclick="document.getElementById('importFile').click()" title="Import Workspace" style="width: auto;">Load</button>
+            <input type="file" id="importFile" style="display:none" onchange="importWorkspace(event)">
+            <button class="secondary" onclick="addPane()" style="width: auto;">+ Pane</button>
+            <button class="success" id="exportBtn" onclick="exportData()" style="display:none; width: auto;">CSV</button>
+            <button class="primary" id="execBtn" onclick="runBatch()" style="width: auto;">Execute All</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <div class="grid-container" id="paneGrid"></div>
+
+        <div class="terminal-panel">
+            <div class="terminal-header">
+                <span>EXECUTION LOGS & TELEMETRY CONSOLE</span>
+                <button class="secondary" onclick="document.getElementById('consoleLog').innerHTML='[SYSTEM] Console cleared.\\n'" style="padding: 2px 6px; font-size:10px; width: auto;">Clear</button>
+            </div>
+            <div class="console-box" id="consoleLog">
+                [SYSTEM] Initializing Pyodide WebAssembly Python runtime...
             </div>
         </div>
     </div>
+
     <script>
-        const canvas = document.getElementById("simCanvas");
-        const ctx = canvas.getContext("2d");
-        let lastData = null;
+        let pyodideReady = false;
+        let pyodideInstance = null;
+
+        async function initPyodide() {
+            try {
+                pyodideInstance = await loadPyodide();
+                await pyodideInstance.loadPackage("numpy");
+                pyodideReady = true;
+                logToConsole("[SUCCESS] Pyodide WebAssembly runtime and NumPy loaded securely in browser sandbox.");
+            } catch (err) {
+                logToConsole("[WARNING] Pyodide failed to load. Custom browser execution disabled.");
+            }
+        }
+        initPyodide();
+
+        let paneCount = 0;
+
+        function addPane(config = {}) {
+            paneCount++;
+            const id = paneCount;
+            const grid = document.getElementById("paneGrid");
+            
+            const card = document.createElement("div");
+            card.className = "pane-card";
+            card.id = `pane-${id}`;
+            card.innerHTML = `
+                <div class="pane-header">
+                    <span class="pane-title">Simulation Pane #${id}</span>
+                    <button class="secondary" onclick="removePane(${id})" style="padding: 2px 8px; color: #f87171; border-color: #7f1d1d; width: auto;">Remove</button>
+                </div>
+
+                <div class="pane-row">
+                    <div>
+                        <label>Core Physics/Chem Engine</label>
+                        <select id="engine-${id}">
+                            <option value="diffusion" ${config.engine === 'diffusion' ? 'selected' : ''}>Brownian Diffusion</option>
+                            <option value="ou" ${config.engine === 'ou' ? 'selected' : ''}>Ornstein-Uhlenbeck</option>
+                            <option value="langevin" ${config.engine === 'langevin' ? 'selected' : ''}>Langevin Dynamics (Trap)</option>
+                            <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Thermal Conduction</option>
+                            <option value="kinetics" ${config.engine === 'kinetics' ? 'selected' : ''}>Chemical Kinetics (Concentration)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Walkers</label>
+                        <input type="number" id="walkers-${id}" value="${config.walkers || 500000}">
+                    </div>
+                </div>
+
+                <div class="pane-row-triple">
+                    <div>
+                        <label>Steps</label>
+                        <input type="number" id="steps-${id}" value="${config.steps || 100}">
+                    </div>
+                    <div>
+                        <label>Scale</label>
+                        <input type="number" step="0.1" id="scale-${id}" value="${config.scale || 1.0}">
+                    </div>
+                    <div>
+                        <label>Boundary</label>
+                        <select id="boundary-${id}">
+                            <option value="free" ${config.boundary === 'free' ? 'selected' : ''}>Free</option>
+                            <option value="reflective" ${config.boundary === 'reflective' ? 'selected' : ''}>Reflective</option>
+                            <option value="periodic" ${config.boundary === 'periodic' ? 'selected' : ''}>Periodic</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Client-Side Custom Rule (Pyodide Sandbox)</label>
+                    <textarea id="code-${id}" placeholder="# Optional NumPy custom rule&#10;def custom_rule(x, y):&#10;    return x, y">${config.code || ''}</textarea>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                    <input type="checkbox" id="record-${id}" ${config.record_history ? 'checked' : ''} style="width: auto; margin:0;">
+                    <label for="record-${id}" style="margin:0; cursor:pointer;">Enable Temporal Animation Recording (10 Frames)</label>
+                </div>
+
+                <div class="viz-container">
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <canvas id="canvas-${id}" width="150" height="150"></canvas>
+                        <div id="playbackContainer-${id}" style="display:none;" class="playback-bar">
+                            <span>Frame:</span>
+                            <input type="range" id="slider-${id}" min="0" max="9" value="9" oninput="scrubFrame(${id}, this.value)" style="width: 110px; padding:0;">
+                        </div>
+                    </div>
+                    <div class="pane-stats" id="stats-${id}">
+                        <strong>Status:</strong> Ready<br>
+                        <strong>Engine Time:</strong> -- ms<br>
+                        <strong>Centroid:</strong> (--, --)<br>
+                        <strong>Spread (Std):</strong> X: -- | Y: --
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+            logToConsole(`[INFO] Spawned Simulation Pane #${id}`);
+        }
+
+        function removePane(id) {
+            const card = document.getElementById(`pane-${id}`);
+            if (card) {
+                card.remove();
+                logToConsole(`[INFO] Terminated Simulation Pane #${id}`);
+            }
+        }
+
+        function loadPreset(type) {
+            const grid = document.getElementById("paneGrid");
+            grid.innerHTML = "";
+            paneCount = 0;
+
+            if (type === "engines") {
+                addPane({ engine: "thermal", scale: 1.0 });
+                addPane({ engine: "langevin", scale: 1.0 });
+                addPane({ engine: "kinetics", scale: 1.0 });
+                logToConsole("[INFO] Loaded preset: Advanced Physics & Chemistry Matrix.");
+            } else if (type === "sweep") {
+                addPane({ engine: "thermal", scale: 0.5 });
+                addPane({ engine: "thermal", scale: 1.0 });
+                addPane({ engine: "thermal", scale: 2.0 });
+                logToConsole("[INFO] Loaded preset: Thermal Sensitivity Sweep.");
+            } else if (type === "temporal") {
+                addPane({ engine: "langevin", steps: 25, record_history: true });
+                addPane({ engine: "langevin", steps: 100, record_history: true });
+                addPane({ engine: "langevin", steps: 300, record_history: true });
+                logToConsole("[INFO] Loaded preset: Langevin Temporal Horizon.");
+            }
+            document.getElementById("presetSelector").value = "";
+        }
+
+        function exportWorkspace() {
+            const panes = [];
+            document.querySelectorAll('.pane-card').forEach(card => {
+                const id = card.id.split('-')[1];
+                panes.push({
+                    engine: document.getElementById(`engine-${id}`).value,
+                    walkers: document.getElementById(`walkers-${id}`).value,
+                    steps: document.getElementById(`steps-${id}`).value,
+                    scale: document.getElementById(`scale-${id}`).value,
+                    boundary: document.getElementById(`boundary-${id}`).value,
+                    code: document.getElementById(`code-${id}`).value,
+                    record_history: document.getElementById(`record-${id}`).checked
+                });
+            });
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(panes, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "workstation_project.json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            logToConsole("[SUCCESS] Workspace project exported successfully.");
+        }
+
+        function importWorkspace(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const panes = JSON.parse(e.target.result);
+                    document.getElementById("paneGrid").innerHTML = "";
+                    paneCount = 0;
+                    panes.forEach(p => addPane(p));
+                    logToConsole("[SUCCESS] Workspace project imported successfully.");
+                } catch (err) {
+                    alert("Invalid JSON workspace file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function logToConsole(text) {
+            const consoleBox = document.getElementById("consoleLog");
+            consoleBox.innerHTML += `<div>${text}</div>`;
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function renderCanvas(canvasId, gridData, res, theme) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const maxDensity = Math.max(...gridData) || 1;
+
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = res; offCanvas.height = res;
+            const offCtx = offCanvas.getContext('2d');
+            const imgData = offCtx.createImageData(res, res);
+            const data = imgData.data;
+
+            for (let i = 0; i < gridData.length; i++) {
+                const val = gridData[i];
+                const pIdx = i * 4;
+                if (val > 0) {
+                    const intensity = val / maxDensity;
+                    if (theme === 'fire') {
+                        data[pIdx] = Math.floor(255 * intensity);
+                        data[pIdx+1] = Math.floor(100 * intensity);
+                        data[pIdx+2] = 50;
+                    } else if (theme === 'ice') {
+                        data[pIdx] = 50;
+                        data[pIdx+1] = Math.floor(150 * intensity);
+                        data[pIdx+2] = Math.floor(255 * intensity);
+                    } else if (theme === 'matrix') {
+                        data[pIdx] = 0;
+                        data[pIdx+1] = Math.floor(255 * intensity);
+                        data[pIdx+2] = 0;
+                    } else {
+                        data[pIdx] = Math.floor(255 * intensity);
+                        data[pIdx+1] = Math.floor(255 * intensity);
+                        data[pIdx+2] = Math.floor(255 * intensity);
+                    }
+                    data[pIdx+3] = 255;
+                } else {
+                    data[pIdx+3] = 255;
+                }
+            }
+            offCtx.putImageData(imgData, 0, 0);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(offCanvas, 0, 0, canvas.width, canvas.height);
+        }
+
+        let globalPanesHistory = {};
+
+        function scrubFrame(id, frameIdx) {
+            if (globalPanesHistory[id] && globalPanesHistory[id][frameIdx]) {
+                const theme = document.getElementById("heatmapColor").value;
+                const res = parseInt(document.getElementById("heatmapRes").value);
+                renderCanvas(`canvas-${id}`, globalPanesHistory[id][frameIdx], res, theme);
+            }
+        }
 
         async function fetchSystemInfo() {
             const ratio = document.getElementById("ram_ratio").value;
             const res = await fetch(`/hardware?ratio=${ratio}`);
             const data = await res.json();
             document.getElementById("hwBadge").innerHTML = `
-                <strong>Hardware Status:</strong><br>
-                System RAM: <strong>${data.total_ram_gb} GB</strong><br>
-                Allocated Buffer: <strong>${data.allocated_mb} MB</strong> (${data.ratio}% of RAM)<br>
-                Max Walker Cap: <strong>${data.max_walkers.toLocaleString()}</strong>
+                RAM: <strong>${data.total_ram_gb} GB</strong> | Buffer: <strong>${data.allocated_mb} MB</strong> (${data.ratio}%)
             `;
-            document.getElementById("maxWalkersDisplay").value = data.max_walkers.toLocaleString();
         }
-
-        function updateAllocation() {
-            fetchSystemInfo();
-        }
-
+        function updateAllocation() { fetchSystemInfo(); }
         fetchSystemInfo();
 
-        function drawPoints(xArr, yArr) {
-            ctx.fillStyle = "#000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#00bcd4";
-            for (let i = 0; i < xArr.length; i += 10) {
-                let screenX = (xArr[i] + 100) * (canvas.width / 200);
-                let screenY = (yArr[i] + 100) * (canvas.height / 200);
-                ctx.fillRect(screenX, screenY, 2, 2);
+        async function runBatch() {
+            const cardElements = document.querySelectorAll('.pane-card');
+            if (cardElements.length === 0) {
+                alert("Please add at least one simulation pane.");
+                return;
             }
-        }
 
-        async function runSimulation() {
+            const panesPayload = [];
+            cardElements.forEach(card => {
+                const id = card.id.split('-')[1];
+                panesPayload.push({
+                    engine: document.getElementById(`engine-${id}`).value,
+                    walkers: parseInt(document.getElementById(`walkers-${id}`).value),
+                    steps: parseInt(document.getElementById(`steps-${id}`).value),
+                    step_scale: parseFloat(document.getElementById(`scale-${id}`).value),
+                    boundary: document.getElementById(`boundary-${id}`).value,
+                    code: document.getElementById(`code-${id}`).value,
+                    record_history: document.getElementById(`record-${id}`).checked
+                });
+            });
+
             const payload = {
-                engine: document.getElementById("engine_type").value,
-                walkers: parseInt(document.getElementById("walkers").value),
-                steps: parseInt(document.getElementById("steps").value),
-                step_scale: parseFloat(document.getElementById("step_scale").value),
-                code: document.getElementById("user_code").value,
+                panes: panesPayload,
+                resolution: parseInt(document.getElementById("heatmapRes").value),
                 ram_ratio: parseFloat(document.getElementById("ram_ratio").value)
             };
-            const response = await fetch("/run", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (data.status === "success") { 
-                lastData = data;
-                drawPoints(data.x, data.y);
-                
-                document.getElementById("telStatus").innerText = "Successful";
-                document.getElementById("telStatus").style.color = "#4caf50";
-                document.getElementById("telJit").innerText = data.jit_success ? "Compiled (Numba JIT)" : "Fallback (Standard Python)";
-                document.getElementById("telEngine").innerText = data.engine_time_ms;
-                document.getElementById("telTotal").innerText = data.total_time_ms;
-                
-                document.getElementById("telCx").innerText = data.metrics.centroid_x;
-                document.getElementById("telCy").innerText = data.metrics.centroid_y;
-                document.getElementById("telSx").innerText = data.metrics.std_x;
-                document.getElementById("telSy").innerText = data.metrics.std_y;
-                document.getElementById("telMinX").innerText = data.metrics.min_x;
-                document.getElementById("telMaxX").innerText = data.metrics.max_x;
-                document.getElementById("telMinY").innerText = data.metrics.min_y;
-                document.getElementById("telMaxY").innerText = data.metrics.max_y;
 
-                document.getElementById("telemetryBox").style.display = "block";
-                document.getElementById("exportBtn").style.display = "block";
-            } else { 
-                document.getElementById("telStatus").innerText = "Failed";
-                document.getElementById("telStatus").style.color = "#f44336";
-                document.getElementById("telemetryBox").style.display = "block";
-                document.getElementById("exportBtn").style.display = "none";
-                alert("Error: " + data.message); 
+            const btn = document.getElementById("execBtn");
+            btn.disabled = true;
+            btn.innerText = "Executing...";
+            logToConsole(`[EXEC] Initializing batch pipeline across ${panesPayload.length} parallel panes...`);
+
+            try {
+                const response = await fetch("/run", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    const theme = document.getElementById("heatmapColor").value;
+                    const res = data.resolution;
+
+                    data.panes.forEach((resData, idx) => {
+                        const cardId = cardElements[idx].id.split('-')[1];
+                        renderCanvas(`canvas-${cardId}`, resData.density_grid, res, theme);
+                        
+                        document.getElementById(`stats-${cardId}`).innerHTML = `
+                            <strong>Status:</strong> Completed (${resData.engine_time_ms} ms)<br>
+                            <strong>Centroid:</strong> (${resData.metrics.centroid_x}, ${resData.metrics.centroid_y})<br>
+                            <strong>Spread:</strong> X: ${resData.metrics.std_x} | Y: ${resData.metrics.std_y}
+                        `;
+
+                        if (resData.history && resData.history.length > 0) {
+                            globalPanesHistory[cardId] = resData.history;
+                            document.getElementById(`playbackContainer-${cardId}`).style.display = "flex";
+                            document.getElementById(`slider-${cardId}`).max = resData.history.length - 1;
+                            document.getElementById(`slider-${cardId}`).value = resData.history.length - 1;
+                        } else {
+                            document.getElementById(`playbackContainer-${cardId}`).style.display = "none";
+                        }
+                    });
+
+                    data.logs.forEach(log => logToConsole(log));
+                    document.getElementById("exportBtn").style.display = "inline-block";
+                } else {
+                    logToConsole(`[ERROR] ${data.message}`);
+                    alert("Simulation Error: " + data.message);
+                }
+            } catch (err) {
+                logToConsole(`[CRITICAL] Network error: ${err}`);
+                alert("Network Error: " + err);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Execute All";
             }
         }
 
-        function exportData() {
-            if (!lastData) return;
-            let csv = "x,y\n";
-            for (let i = 0; i < lastData.x.length; i++) {
-                csv += `${lastData.x[i]},${lastData.y[i]}\n`;
-            }
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "simulation_coordinates.csv";
-            a.click();
-        }
+        function exportData() { window.location.href = "/export"; }
+
+        addPane({ engine: "thermal", scale: 1.0 });
     </script>
 </body>
 </html>
