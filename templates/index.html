@@ -164,7 +164,7 @@
         }
         textarea {
             width: 100%;
-            height: 80px;
+            height: 90px;
             background: var(--bg-base);
             color: var(--text-main);
             border: 1px solid var(--border-color);
@@ -278,12 +278,10 @@
         <div class="header-actions">
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
                 <option value="" disabled selected>Workstation Suites</option>
+                <option value="multiphysics">Coupled Bioreactor Pitch</option>
+                <option value="showcase">Pure Physics Showcase</option>
                 <option value="eruption">Volcano Eruption Suite</option>
                 <option value="diffusion">Brownian Diffusion Suite</option>
-                <option value="quant">Quant Risk Suite</option>
-                <option value="physics">Physics & Quantum</option>
-                <option value="chaos">Chaos & Dynamics</option>
-                <option value="astro">Astrophysics Suite</option>
             </select>
             <button class="secondary" onclick="exportWorkspace()" title="Export JSON Workspace" style="width: auto;">Save</button>
             <button class="secondary" onclick="document.getElementById('importFile').click()" title="Import Workspace" style="width: auto;">Load</button>
@@ -313,7 +311,7 @@
                 pyodideInstance = await loadPyodide();
                 await pyodideInstance.loadPackage("numpy");
                 pyodideReady = true;
-                logToConsole("[SUCCESS] Pyodide WebAssembly runtime and NumPy loaded securely in browser sandbox.");
+                logToConsole("[SUCCESS] Pyodide WebAssembly runtime loaded.");
             } catch (err) {
                 logToConsole("[WARNING] Pyodide failed to load. Custom browser execution disabled.");
             }
@@ -336,48 +334,10 @@
                     <div>
                         <label>Simulation Engine (32 Active Models)</label>
                         <select id="engine-${id}">
-                            <optgroup label="[Default / Diffusion]">
-                                <option value="diffusion" ${config.engine === 'diffusion' || !config.engine ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
-                            </optgroup>
-                            <optgroup label="[01. Quantitative Finance & Derivatives]">
-                                <option value="heston" ${config.engine === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
-                                <option value="merton" ${config.engine === 'merton' ? 'selected' : ''}>Merton Jump-Diffusion</option>
-                                <option value="black_scholes" ${config.engine === 'black_scholes' ? 'selected' : ''}>Black-Scholes Monte Carlo</option>
-                                <option value="garch" ${config.engine === 'garch' ? 'selected' : ''}>GARCH(1,1) Volatility Clustering</option>
-                                <option value="vasicek" ${config.engine === 'vasicek' ? 'selected' : ''}>Vasicek Interest Rate Model</option>
-                                <option value="cir" ${config.engine === 'cir' ? 'selected' : ''}>Cox-Ingersoll-Ross (CIR)</option>
-                                <option value="bates" ${config.engine === 'bates' ? 'selected' : ''}>Bates Stochastic Volatility + Jumps</option>
-                                <option value="cev" ${config.engine === 'cev' ? 'selected' : ''}>Constant Elasticity of Variance (CEV)</option>
-                                <option value="sabr" ${config.engine === 'sabr' ? 'selected' : ''}>SABR Stochastic Volatility Model</option>
-                                <option value="var_jump" ${config.engine === 'var_jump' ? 'selected' : ''}>VaR Tail-Risk Shock Monte Carlo</option>
-                            </optgroup>
-                            <optgroup label="[02. Advanced Physics & Quantum Mechanics]">
-                                <option value="ou" ${config.engine === 'ou' ? 'selected' : ''}>Ornstein-Uhlenbeck (Mean Reverting)</option>
-                                <option value="langevin" ${config.engine === 'langevin' ? 'selected' : ''}>Langevin Dynamics (Harmonic Trap)</option>
-                                <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
-                                <option value="quantum" ${config.engine === 'quantum' ? 'selected' : ''}>Quantum Harmonic Oscillator Phase-Space</option>
-                                <option value="schrodinger" ${config.engine === 'schrodinger' ? 'selected' : ''}>Schrödinger Wavepacket Tunneling</option>
-                                <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid Vorticity</option>
-                                <option value="lorentz_force" ${config.engine === 'lorentz_force' ? 'selected' : ''}>Charged Particle in Crossed E&B Fields</option>
-                                <option value="kramers" ${config.engine === 'kramers' ? 'selected' : ''}>Kramers Thermal Barrier Escape</option>
-                            </optgroup>
-                            <optgroup label="[03. Nonlinear Dynamics, Chaos & Complex Systems]">
-                                <option value="kinetics" ${config.engine === 'kinetics' ? 'selected' : ''}>Lotka-Volterra Chemical Kinetics</option>
-                                <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Pattern Formation</option>
-                                <option value="lennard_jones" ${config.engine === 'lennard_jones' ? 'selected' : ''}>Lennard-Jones Molecular Dynamics</option>
-                                <option value="sir" ${config.engine === 'sir' ? 'selected' : ''}>SIR Epidemic Compartmental Diffusion</option>
-                                <option value="ising" ${config.engine === 'ising' ? 'selected' : ''}>2D Ising Spin Lattice Phase Transition</option>
-                                <option value="burgers" ${config.engine === 'burgers' ? 'selected' : ''}>Burgers' Equation Shockwave Dispersion</option>
-                                <option value="lorenz" ${config.engine === 'lorenz' ? 'selected' : ''}>Lorenz Attractor Chaos Butterfly</option>
-                                <option value="bz_reaction" ${config.engine === 'bz_reaction' ? 'selected' : ''}>Belousov-Zhabotinsky Oscillating Chemical</option>
-                                <option value="lorenz96" ${config.engine === 'lorenz96' ? 'selected' : ''}>Lorenz-96 Atmospheric Weather Chaos</option>
-                            </optgroup>
-                            <optgroup label="[04. Astrophysics & Space Physics]">
-                                <option value="keplerian" ${config.engine === 'keplerian' ? 'selected' : ''}>Keplerian Orbital Dynamics</option>
-                                <option value="hubble_flow" ${config.engine === 'hubble_flow' ? 'selected' : ''}>Cosmological Hubble Expansion</option>
-                                <option value="stellar_cluster" ${config.engine === 'stellar_cluster' ? 'selected' : ''}>Stellar Cluster Gravitational Relaxation</option>
-                                <option value="nbody_ring" ${config.engine === 'nbody_ring' ? 'selected' : ''}>N-Body Lagrange Point Stability Ring</option>
-                            </optgroup>
+                            <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Pattern Formation</option>
+                            <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
+                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid Vorticity</option>
+                            <option value="diffusion" ${config.engine === 'diffusion' || !config.engine ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
                         </select>
                     </div>
                     <div>
@@ -405,7 +365,7 @@
                 </div>
                 <div>
                     <label>Client-Side Custom Rule (Pyodide Sandbox)</label>
-                    <textarea id="code-${id}" placeholder="# Optional NumPy custom rule\nimport numpy as np\n# code here...">${config.code || ''}</textarea>
+                    <textarea id="code-${id}">${config.code || ''}</textarea>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
                     <input type="checkbox" id="record-${id}" ${config.record_history ? 'checked' : ''} style="width: auto; margin:0;">
@@ -441,39 +401,20 @@
             const grid = document.getElementById("paneGrid");
             grid.innerHTML = "";
             paneCount = 0;
-            if (type === "eruption") {
-                addPane({ engine: "thermal", walkers: 200000, steps: 80, scale: 0.4, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i < int(res * 0.60):\n        grid2d[i] *= 0.05\n    else:\n        mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * 0.15)**2))\n        grid2d[i] *= mask * 2.5\ngrid2d[int(res * 0.90):] = 0\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "langevin", walkers: 400000, steps: 100, scale: 0.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    width = 0.02 + 0.08 * ((res - i) / res)\n    mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * width)**2))\n    grid2d[i] *= mask * 1.5\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "navier_stokes", walkers: 500000, steps: 100, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    turbulence = int(np.sin(i * 0.20) * 12)\n    grid2d[i] = np.roll(grid2d[i], turbulence)\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "diffusion", walkers: 400000, steps: 120, scale: 1.2, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    altitude = res - i\n    shift = int((altitude / res) * 80)\n    grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "lorenz96", walkers: 500000, steps: 150, scale: 1.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    altitude = res - i\n    shear = int((altitude / res) * 150)\n    grid2d[i] = np.roll(grid2d[i], shear)\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "ou", walkers: 300000, steps: 100, scale: 0.7, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nceiling = int(res * 0.35)\ngrid2d[:ceiling] = 0\ncenter = res // 2\nanvil = np.exp(-((np.arange(res) - center)**2) / (2 * (res * 0.25)**2)) * 3.0\ngrid2d[ceiling:ceiling+6, :] += anvil\ngrid_arr[:] = grid2d.flatten()" });
-                logToConsole("[INFO] Loaded preset: Stratified Volcano Eruption Suite.");
-            } else if (type === "diffusion") {
-                addPane({ engine: "diffusion", scale: 1.0 });
-                addPane({ engine: "diffusion", scale: 0.5 });
-                addPane({ engine: "diffusion", scale: 2.0 });
-                logToConsole("[INFO] Loaded preset: Brownian Diffusion Suite.");
-            } else if (type === "quant") {
-                addPane({ engine: "heston", scale: 1.0 });
-                addPane({ engine: "sabr", scale: 1.0 });
-                addPane({ engine: "garch", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Quant Risk Suite.");
-            } else if (type === "physics") {
-                addPane({ engine: "schrodinger", scale: 1.0 });
-                addPane({ engine: "navier_stokes", scale: 1.0 });
-                addPane({ engine: "lorentz_force", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Physics & Quantum Suite.");
-            } else if (type === "chaos") {
-                addPane({ engine: "lorenz", scale: 1.0 });
-                addPane({ engine: "burgers", scale: 1.0 });
-                addPane({ engine: "lorenz96", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Chaos & Dynamics Suite.");
-            } else if (type === "astro") {
-                addPane({ engine: "keplerian", scale: 1.0 });
-                addPane({ engine: "hubble_flow", scale: 1.0 });
-                addPane({ engine: "nbody_ring", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Astrophysics Suite.");
+            if (type === "multiphysics") {
+                // Chemical Synthesis (Gray-Scott)
+                addPane({ engine: "grayscott", walkers: 500000, steps: 200, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            grid2d[i, j] *= 1.3\ngrid_arr[:] = grid2d.flatten()" });
+                
+                // Exothermic Heat (Thermal)
+                addPane({ engine: "thermal", walkers: 400000, steps: 120, scale: 0.8, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] *= 0.05\n        else:\n            grid2d[i, j] *= 1.5\ngrid_arr[:] = grid2d.flatten()" });
+                
+                // Fluid Stirrer (Navier-Stokes)
+                addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.2, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        dist = np.sqrt((i - center)**2 + (j - center)**2)\n        if dist > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            spin = int((dist / radius) * 25)\n            grid2d[i] = np.roll(grid2d[i], spin)\ngrid_arr[:] = grid2d.flatten()" });
+                
+                // Toxic Aerosol Exhaust (Diffusion)
+                addPane({ engine: "diffusion", walkers: 350000, steps: 100, scale: 1.5, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i > center - 10:\n        grid2d[i] *= 0.0\n    else:\n        shift = int(((center - i) / res) * 50)\n        grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
+                
+                logToConsole("[INFO] Loaded preset: Coupled Multiphysics Industrial Bioreactor.");
             }
             document.getElementById("presetSelector").value = "";
         }
@@ -498,7 +439,6 @@
             document.body.appendChild(dlAnchor);
             dlAnchor.click();
             dlAnchor.remove();
-            logToConsole("[SUCCESS] Workspace project exported successfully.");
         }
         function importWorkspace(event) {
             const file = event.target.files[0];
@@ -510,7 +450,6 @@
                     document.getElementById("paneGrid").innerHTML = "";
                     paneCount = 0;
                     panes.forEach(p => addPane(p));
-                    logToConsole("[SUCCESS] Workspace project imported successfully.");
                 } catch (err) {
                     alert("Invalid JSON workspace file.");
                 }
@@ -584,10 +523,7 @@
         fetchSystemInfo();
         async function runBatch() {
             const cardElements = document.querySelectorAll('.pane-card');
-            if (cardElements.length === 0) {
-                alert("Please add at least one simulation pane.");
-                return;
-            }
+            if (cardElements.length === 0) return;
             const panesPayload = [];
             cardElements.forEach(card => {
                 const id = card.id.split('-')[1];
@@ -609,7 +545,7 @@
             const btn = document.getElementById("execBtn");
             btn.disabled = true;
             btn.innerText = "Executing...";
-            logToConsole(`[EXEC] Initializing batch pipeline across ${panesPayload.length} parallel panes...`);
+            logToConsole(`[EXEC] Dispatching coupled multiphysics bioreactor data...`);
             try {
                 const response = await fetch("/run", {
                     method: "POST",
@@ -628,7 +564,6 @@
                         if (pyodideReady && customCode.length > 0) {
                             try {
                                 pyodideInstance.globals.set("raw_grid", pyodideInstance.toPy(finalGrid));
-                                
                                 const pyCode = `
 import numpy as np
 grid_arr = np.array(raw_grid, dtype=np.float32)
@@ -637,9 +572,8 @@ processed_grid = grid_arr.tolist()
 `;
                                 pyodideInstance.runPython(pyCode);
                                 finalGrid = pyodideInstance.globals.get("processed_grid").toJs();
-                                logToConsole(`[SANDBOX] Pane #${cardId}: Pyodide custom rule applied successfully.`);
                             } catch (sandboxErr) {
-                                logToConsole(`[WARNING] Pane #${cardId} Pyodide sandbox error: ${sandboxErr.message}`);
+                                logToConsole(`[WARNING] Pane #${cardId} Sandbox error: ${sandboxErr.message}`);
                             }
                         }
                         renderCanvas(`canvas-${cardId}`, finalGrid, res, theme);
@@ -659,13 +593,9 @@ processed_grid = grid_arr.tolist()
                     }
                     data.logs.forEach(log => logToConsole(log));
                     document.getElementById("exportBtn").style.display = "inline-block";
-                } else {
-                    logToConsole(`[ERROR] ${data.message}`);
-                    alert("Simulation Error: " + data.message);
                 }
             } catch (err) {
-                logToConsole(`[CRITICAL] Network error: ${err}`);
-                alert("Network Error: " + err);
+                logToConsole(`[CRITICAL] Error: ${err}`);
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Execute All";
@@ -673,7 +603,7 @@ processed_grid = grid_arr.tolist()
         }
         function exportData() { window.location.href = "/export"; }
         
-        window.onload = () => { loadPreset("eruption"); };
+        window.onload = () => { loadPreset("multiphysics"); };
     </script>
 </body>
 </html>
