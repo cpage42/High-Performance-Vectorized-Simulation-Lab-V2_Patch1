@@ -99,13 +99,15 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.055, k=0.06
             
     return V, history_arr, frame_count
 
-def run_eulerian_pipeline(engine, resolution, steps, boundary, param1, param2):
+def run_eulerian_pipeline(engine, resolution, steps, boundary, param1, param2, param3, param4):
     start_time = time.time()
     
     if engine in ["grayscott", "bz_reaction"]:
         f_rate = param1 if param1 > 0 else 0.055
         k_rate = param2 if param2 > 0 else 0.062
-        grid, hist_arr, frame_count = solve_grayscott_grid(resolution, resolution, steps, boundary, f=f_rate, k=k_rate)
+        du_val = param3 if param3 > 0 else 0.2
+        dv_val = param4 if param4 > 0 else 0.1
+        grid, hist_arr, frame_count = solve_grayscott_grid(resolution, resolution, steps, boundary, f=f_rate, k=k_rate, du=du_val, dv=dv_val)
         history = [hist_arr[i].flatten().astype(np.float64).tolist() for i in range(frame_count)]
     else:
         grid = np.zeros((resolution, resolution), dtype=np.float32)
@@ -236,10 +238,12 @@ def run_batch():
         boundary = pane.get("boundary", "periodic")
         param1 = float(pane.get("param1", 0.0))
         param2 = float(pane.get("param2", 0.0))
+        param3 = float(pane.get("param3", 0.0))
+        param4 = float(pane.get("param4", 0.0))
         try:
             if engine in ["grayscott", "bz_reaction"]:
-                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}).")
-                res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary, param1, param2)
+                logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}, du={param3}, dv={param4}).")
+                res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary, param1, param2, param3, param4)
             else:
                 logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
                 res_data = run_lagrangian_pipeline(pane, resolution)
