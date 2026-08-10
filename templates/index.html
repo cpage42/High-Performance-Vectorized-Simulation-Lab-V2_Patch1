@@ -283,8 +283,8 @@
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
                 <option value="" disabled selected>Workstation Suites</option>
                 <option value="showcase">Pure Physics Showcase</option>
+                <option value="multiphysics">Bioreactor Pitch Suite</option>
                 <option value="eruption">Volcano Eruption Suite</option>
-                <option value="diffusion">Brownian Diffusion Suite</option>
             </select>
             <button class="secondary" onclick="exportWorkspace()" title="Export JSON Workspace" style="width: auto;">Save</button>
             <button class="secondary" onclick="document.getElementById('importFile').click()" title="Import Workspace" style="width: auto;">Load</button>
@@ -340,10 +340,11 @@
                         <label>Simulation Engine</label>
                         <select id="engine-${id}">
                             <option value="lorenz" ${config.engine === 'lorenz' || !config.engine ? 'selected' : ''}>Lorenz Attractor Chaos Butterfly</option>
+                            <option value="heston" ${config.engine === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
                             <option value="schrodinger" ${config.engine === 'schrodinger' ? 'selected' : ''}>Schrödinger Wavepacket Tunneling</option>
-                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid</option>
+                            <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Patterns</option>
                             <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
-                            <option value="diffusion" ${config.engine === 'diffusion' ? 'selected' : ''}>Brownian Diffusion</option>
+                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid</option>
                         </select>
                     </div>
                     <div>
@@ -363,9 +364,9 @@
                     <div>
                         <label>Boundary</label>
                         <select id="boundary-${id}">
-                            <option value="free" ${config.boundary === 'free' ? 'selected' : ''}>Free</option>
+                            <option value="periodic" ${config.boundary === 'periodic' || !config.boundary ? 'selected' : ''}>Periodic</option>
                             <option value="reflective" ${config.boundary === 'reflective' ? 'selected' : ''}>Reflective</option>
-                            <option value="periodic" ${config.boundary === 'periodic' ? 'selected' : ''}>Periodic</option>
+                            <option value="free" ${config.boundary === 'free' ? 'selected' : ''}>Free</option>
                         </select>
                     </div>
                 </div>
@@ -419,6 +420,12 @@
                 addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.0, boundary: "periodic", record_history: true });
                 addPane({ engine: "thermal", walkers: 500000, steps: 150, scale: 1.0, boundary: "reflective", record_history: true });
                 logToConsole("[INFO] Loaded preset: Pure Physics Showcase.");
+            } else if (type === "multiphysics") {
+                addPane({ engine: "grayscott", walkers: 500000, steps: 200, scale: 1.0, boundary: "periodic", record_history: true });
+                addPane({ engine: "thermal", walkers: 400000, steps: 120, scale: 0.8, boundary: "reflective", record_history: true });
+                addPane({ engine: "heston", walkers: 500000, steps: 150, scale: 1.2, boundary: "free", record_history: true });
+                addPane({ engine: "navier_stokes", walkers: 350000, steps: 100, scale: 1.5, boundary: "periodic", record_history: true });
+                logToConsole("[INFO] Loaded preset: Bioreactor Pitch Suite.");
             } else if (type === "eruption") {
                 addPane({ engine: "thermal", walkers: 400000, steps: 100, scale: 0.8, boundary: "reflective", record_history: true });
                 logToConsole("[INFO] Loaded preset: Eruption Suite.");
@@ -587,7 +594,6 @@ processed_grid = grid_arr.tolist()
                             <strong>Spread:</strong> X: ${resData.metrics.std_x} | Y: ${resData.metrics.std_y}
                         `;
 
-                        // Setup continuous auto-looping animation instead of slider
                         if (activeIntervals[cardId]) {
                             clearInterval(activeIntervals[cardId]);
                             delete activeIntervals[cardId];
@@ -603,7 +609,7 @@ processed_grid = grid_arr.tolist()
                                 const currentTheme = document.getElementById("heatmapColor").value;
                                 const currentRes = parseInt(document.getElementById("heatmapRes").value);
                                 renderCanvas(`canvas-${cardId}`, history[frameIdx], currentRes, currentTheme);
-                            }, 120); // 120ms per frame = smooth continuous playback loop
+                            }, 120);
                         } else {
                             document.getElementById(`liveIndicator-${cardId}`).style.display = "none";
                         }
