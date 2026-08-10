@@ -1,9 +1,4 @@
-import numba
+# Moved to experiments/jit_compiler.py
+# Archived shim. The real file lives in experiments/jit_compiler.py
 
-def auto_jit_rule(user_func):
-    try:
-        compiled_func = numba.njit(user_func, fastmath=True)
-        return compiled_func, True
-    except Exception as e:
-        print(f"JIT compilation warning: executing as standard Python. ({e})")
-        return user_func, False
+raise RuntimeError("jit_compiler.py has been moved to experiments/jit_compiler.py")
