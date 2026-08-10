@@ -105,7 +105,7 @@ def run_eulerian_pipeline(engine, resolution, steps, boundary):
     }
 
 # ============================================================================
-# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines)
+# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines with Explicit Types)
 # ============================================================================
 
 @jit(nopython=True)
@@ -116,36 +116,44 @@ def run_particle_simulation(walkers, steps, scale, engine_type):
     history_x = []
     history_y = []
     
+    f32_10 = np.float32(10.0)
+    f32_8 = np.float32(8.0)
+    f32_dt_lorenz = np.float32(0.005)
+    f32_dt_heston = np.float32(0.01)
+    f32_zero2 = np.float32(0.02)
+    f32_zero5 = np.float32(0.05)
+    f32_zero8 = np.float32(0.08)
+    f32_one1 = np.float32(0.1)
+    
     for s in range(steps):
         if engine_type == "lorenz":
-            dx = 10.0 * (y - x)
-            dy = x * (28.0 - 20.0) - y
-            x += dx * 0.005
-            y += dy * 0.005
+            dx = f32_10 * (y - x)
+            dy = x * f32_8 - y
+            x += dx * f32_dt_lorenz
+            y += dy * f32_dt_lorenz
         elif engine_type in ["heston", "bates", "black_scholes"]:
-            dt = 0.01
-            vol = np.abs(np.random.normal(0.2, 0.05, walkers))
-            x += (0.05 - 0.5 * vol**2) * dt + vol * np.sqrt(dt) * np.random.randn(walkers).astype(np.float32)
-            y += -0.7 * vol * np.random.randn(walkers).astype(np.float32) * np.sqrt(dt)
+            vol = np.abs(np.random.normal(0.2, 0.05, walkers)).astype(np.float32)
+            x += (np.float32(0.05) - np.float32(0.5) * vol**2) * f32_dt_heston + vol * np.sqrt(f32_dt_heston) * np.random.randn(walkers).astype(np.float32)
+            y += np.float32(-0.7) * vol * np.random.randn(walkers).astype(np.float32) * np.sqrt(f32_dt_heston)
         elif engine_type in ["schrodinger", "quantum"]:
-            phase = s * 0.15
+            phase = np.float32(s * 0.15)
             x_old = x.copy()
             x = x_old * np.cos(phase) - y * np.sin(phase)
             y = x_old * np.sin(phase) + y * np.cos(phase)
-            x += np.random.normal(0, 0.02, walkers).astype(np.float32)
+            x += np.random.normal(0.0, 0.02, walkers).astype(np.float32)
         elif engine_type in ["thermal", "kramers"]:
-            r = np.sqrt(x**2 + y**2) + 1e-5
-            x += (x / r) * 0.05 * scale + np.random.normal(0, 0.05, walkers).astype(np.float32)
-            y += (y / r) * 0.05 * scale + np.random.normal(0, 0.05, walkers).astype(np.float32)
+            r = np.sqrt(x**2 + y**2) + np.float32(1e-5)
+            x += (x / r) * f32_zero5 * scale + np.random.normal(0.0, 0.05, walkers).astype(np.float32)
+            y += (y / r) * f32_zero5 * scale + np.random.normal(0.0, 0.05, walkers).astype(np.float32)
         elif engine_type == "navier_stokes":
-            theta = 0.05
+            theta = np.float32(0.05)
             x_old = x.copy()
             x = x_old * np.cos(theta) - y * np.sin(theta)
             y = x_old * np.sin(theta) + y * np.cos(theta)
-            x += np.random.normal(0, 0.08, walkers).astype(np.float32)
+            x += np.random.normal(0.0, 0.08, walkers).astype(np.float32)
         else:
-            x += np.random.normal(0, 0.1, walkers).astype(np.float32) * scale
-            y += np.random.normal(0, 0.1, walkers).astype(np.float32) * scale
+            x += np.random.normal(0.0, 0.1, walkers).astype(np.float32) * scale
+            y += np.random.normal(0.0, 0.1, walkers).astype(np.float32) * scale
             
         if s % max(1, steps // 10) == 0:
             history_x.append(x.copy())
@@ -212,7 +220,6 @@ def run_batch():
                 res_data = run_lagrangian_pipeline(pane, resolution)
         except Exception as err:
             logs.append(f"[CRITICAL ERROR] Pane #{idx+1} ({engine}) failed: {str(err)}")
-            # Graceful fallback payload for failed execution so batch remains intact
             fallback_grid = np.zeros(resolution * resolution, dtype=np.float32).flatten().tolist()
             res_data = {
                 "density_grid": fallback_grid,
