@@ -278,6 +278,8 @@
         <div class="header-actions">
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
                 <option value="" disabled selected>Workstation Suites</option>
+                <option value="diffusion">Brownian Diffusion Suite</option>
+                <option value="eruption">Volcano Eruption Suite</option>
                 <option value="quant">Quant Risk Suite</option>
                 <option value="physics">Physics & Quantum</option>
                 <option value="chaos">Chaos & Dynamics</option>
@@ -332,8 +334,14 @@
                 </div>
                 <div class="pane-row">
                     <div>
-                        <label>Simulation Engine (32 Active Models)</label>
+                        <label>Simulation Engine (33 Active Models)</label>
                         <select id="engine-${id}">
+                            <optgroup label="[Default / Diffusion]">
+                                <option value="diffusion" ${config.engine === 'diffusion' || !config.engine ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
+                            </optgroup>
+                            <optgroup label="[05. Environmental & Earth Systems]">
+                                <option value="volcano_weather" ${config.engine === 'volcano_weather' ? 'selected' : ''}>Volcano Ash & Multi-Layer Weather Dispersion</option>
+                            </optgroup>
                             <optgroup label="[01. Quantitative Finance & Derivatives]">
                                 <option value="heston" ${config.engine === 'heston' ? 'selected' : ''}>Heston Stochastic Volatility</option>
                                 <option value="merton" ${config.engine === 'merton' ? 'selected' : ''}>Merton Jump-Diffusion</option>
@@ -347,7 +355,6 @@
                                 <option value="var_jump" ${config.engine === 'var_jump' ? 'selected' : ''}>VaR Tail-Risk Shock Monte Carlo</option>
                             </optgroup>
                             <optgroup label="[02. Advanced Physics & Quantum Mechanics]">
-                                <option value="diffusion" ${config.engine === 'diffusion' ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
                                 <option value="ou" ${config.engine === 'ou' ? 'selected' : ''}>Ornstein-Uhlenbeck (Mean Reverting)</option>
                                 <option value="langevin" ${config.engine === 'langevin' ? 'selected' : ''}>Langevin Dynamics (Harmonic Trap)</option>
                                 <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
@@ -401,7 +408,7 @@
                 </div>
                 <div>
                     <label>Client-Side Custom Rule (Pyodide Sandbox)</label>
-                    <textarea id="code-${id}" placeholder="# Optional NumPy custom rule\ndef custom_rule(x, y):\n    return x, y">${config.code || ''}</textarea>
+                    <textarea id="code-${id}" placeholder="# Optional NumPy custom rule\nimport numpy as np\n# code here...">${config.code || ''}</textarea>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
                     <input type="checkbox" id="record-${id}" ${config.record_history ? 'checked' : ''} style="width: auto; margin:0;">
@@ -437,7 +444,15 @@
             const grid = document.getElementById("paneGrid");
             grid.innerHTML = "";
             paneCount = 0;
-            if (type === "quant") {
+            if (type === "diffusion") {
+                addPane({ engine: "diffusion", scale: 1.0 });
+                addPane({ engine: "diffusion", scale: 0.5 });
+                addPane({ engine: "diffusion", scale: 2.0 });
+                logToConsole("[INFO] Loaded preset: Brownian Diffusion Suite.");
+            } else if (type === "eruption") {
+                addPane({ engine: "volcano_weather", scale: 1.0, steps: 150 });
+                logToConsole("[INFO] Loaded preset: Volcano Eruption Suite.");
+            } else if (type === "quant") {
                 addPane({ engine: "heston", scale: 1.0 });
                 addPane({ engine: "sabr", scale: 1.0 });
                 addPane({ engine: "garch", scale: 1.0 });
@@ -611,15 +626,15 @@
                         if (pyodideReady && customCode.length > 0) {
                             try {
                                 pyodideInstance.globals.set("raw_grid", pyodideInstance.toPy(finalGrid));
-                                pyodideInstance.runPython(`
-                                    import numpy as np
-                                    def execute_user_rule():
-                                        global raw_grid
-                                        grid_arr = np.array(raw_grid, dtype=np.float32)
-                                        ${customCode.includes('def custom_rule') ? customCode + '\n        # auto-apply if defined' : ''}
-                                        return grid_arr.tolist()
-                                    processed_grid = execute_user_rule()
-                                `);
+                                
+                                // Execute code at the root scope, eliminating all indentation errors
+                                const pyCode = `
+import numpy as np
+grid_arr = np.array(raw_grid, dtype=np.float32)
+` + customCode + `
+processed_grid = grid_arr.tolist()
+`;
+                                pyodideInstance.runPython(pyCode);
                                 finalGrid = pyodideInstance.globals.get("processed_grid").toJs();
                                 logToConsole(`[SANDBOX] Pane #${cardId}: Pyodide custom rule applied successfully.`);
                             } catch (sandboxErr) {
@@ -656,7 +671,7 @@
             }
         }
         function exportData() { window.location.href = "/export"; }
-        addPane({ engine: "heston", scale: 1.0 });
+        addPane({ engine: "diffusion", scale: 1.0 });
     </script>
 </body>
 </html>
