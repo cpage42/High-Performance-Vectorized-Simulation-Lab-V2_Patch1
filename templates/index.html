@@ -442,12 +442,12 @@
             grid.innerHTML = "";
             paneCount = 0;
             if (type === "eruption") {
-                addPane({ engine: "thermal", walkers: 200000, steps: 80, scale: 0.4, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i < int(res * 0.35):\n        mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * 0.12)**2))\n        grid2d[i] *= mask * 2.0\n    else:\n        grid2d[i] *= 0.05\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "langevin", walkers: 400000, steps: 100, scale: 0.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    width = 0.04 + 0.06 * (i / res)\n    mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * width)**2))\n    grid2d[i] *= mask\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "navier_stokes", walkers: 500000, steps: 100, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    turbulence = int(np.sin(i * 0.25) * 6)\n    grid2d[i] = np.roll(grid2d[i], turbulence)\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "diffusion", walkers: 400000, steps: 120, scale: 1.2, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    shift = int((i / res) * 18)\n    grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "lorenz96", walkers: 500000, steps: 150, scale: 1.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    shear = int((i / res) * 55)\n    grid2d[i] = np.roll(grid2d[i], shear)\ngrid_arr[:] = grid2d.flatten()" });
-                addPane({ engine: "ou", walkers: 300000, steps: 100, scale: 0.7, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nceiling = int(res * 0.75)\ngrid2d[ceiling:] = 0 \nhorizontal_spread = np.ones(res) * 0.8\ngrid2d[ceiling-6:ceiling, :] += horizontal_spread\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "thermal", walkers: 200000, steps: 80, scale: 0.4, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i < int(res * 0.60):\n        grid2d[i] *= 0.05\n    else:\n        mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * 0.15)**2))\n        grid2d[i] *= mask * 2.5\ngrid2d[int(res * 0.90):] = 0\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "langevin", walkers: 400000, steps: 100, scale: 0.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    width = 0.02 + 0.08 * ((res - i) / res)\n    mask = np.exp(-((np.arange(res) - center)**2) / (2 * (res * width)**2))\n    grid2d[i] *= mask * 1.5\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "navier_stokes", walkers: 500000, steps: 100, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    turbulence = int(np.sin(i * 0.20) * 12)\n    grid2d[i] = np.roll(grid2d[i], turbulence)\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "diffusion", walkers: 400000, steps: 120, scale: 1.2, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    altitude = res - i\n    shift = int((altitude / res) * 80)\n    grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "lorenz96", walkers: 500000, steps: 150, scale: 1.8, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nfor i in range(res):\n    altitude = res - i\n    shear = int((altitude / res) * 150)\n    grid2d[i] = np.roll(grid2d[i], shear)\ngrid_arr[:] = grid2d.flatten()" });
+                addPane({ engine: "ou", walkers: 300000, steps: 100, scale: 0.7, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\nceiling = int(res * 0.35)\ngrid2d[:ceiling] = 0\ncenter = res // 2\nanvil = np.exp(-((np.arange(res) - center)**2) / (2 * (res * 0.25)**2)) * 3.0\ngrid2d[ceiling:ceiling+6, :] += anvil\ngrid_arr[:] = grid2d.flatten()" });
                 logToConsole("[INFO] Loaded preset: Stratified Volcano Eruption Suite.");
             } else if (type === "diffusion") {
                 addPane({ engine: "diffusion", scale: 1.0 });
@@ -673,8 +673,7 @@ processed_grid = grid_arr.tolist()
         }
         function exportData() { window.location.href = "/export"; }
         
-        // Initialize the default 6-Pane Volcano simulation
-        loadPreset("eruption");
+        window.onload = () => { loadPreset("eruption"); };
     </script>
 </body>
 </html>
