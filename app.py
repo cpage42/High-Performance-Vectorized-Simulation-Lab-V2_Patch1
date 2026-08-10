@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, Response
 from numba import jit, prange
 
 try:
@@ -10,6 +10,9 @@ except ImportError:
     HAS_PSUTIL = False
 
 app = Flask(__name__)
+
+# Store last-run results so /export can provide a quick CSV download
+LAST_RESULTS = None
 
 @app.route("/hardware", methods=["GET"])
 def hardware_specs():
@@ -106,6 +109,7 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.036, k=0.06
             
     return V, history_arr, frame_count
 
+
 def run_eulerian_pipeline(engine, resolution, steps, boundary, param1, param2, param3, param4):
     start_time = time.time()
     
@@ -197,12 +201,14 @@ def run_particle_simulation(walkers, steps, scale, engine_type):
             
     return x, y, history_x, history_y
 
+
 def run_lagrangian_pipeline(pane, resolution):
     start_time = time.time()
-    walkers = pane["walkers"]
-    steps = pane["steps"]
+    # validate and default pane fields to avoid KeyError blowing up the whole request
+    walkers = int(pane.get("walkers", pane.get("paramVal", 500000)))
+    steps = int(pane.get("steps", 300))
     scale = float(pane.get("step_scale", pane.get("scale", 1.0)))
-    engine = pane["engine"]
+    engine = pane.get("engine", "diffusion")
     
     x, y, h_x, h_y = run_particle_simulation(walkers, steps, scale, engine)
     
@@ -234,14 +240,15 @@ def run_lagrangian_pipeline(pane, resolution):
 
 @app.route("/run", methods=["POST"])
 def run_batch():
-    data = request.json
-    resolution = data.get("resolution", 200)
+    global LAST_RESULTS
+    data = request.json or {}
+    resolution = int(data.get("resolution", 200))
     panes = data.get("panes", [])
     results = []
     logs = []
 
     for idx, pane in enumerate(panes):
-        engine = pane["engine"]
+        engine = pane.get("engine", "diffusion")
         boundary = pane.get("boundary", "periodic")
         param1 = float(pane.get("param1", 0.0))
         param2 = float(pane.get("param2", 0.0))
@@ -250,7 +257,7 @@ def run_batch():
         try:
             if engine in ["grayscott", "bz_reaction", "kuramoto", "cahn_hilliard", "wave_equation", "heat_equation", "burgers", "shallow_water"]:
                 logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}).")
-                res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary, param1, param2, param3, param4)
+                res_data = run_eulerian_pipeline(engine, resolution, int(pane.get("steps", 300)), boundary, param1, param2, param3, param4)
             else:
                 logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Stochastic Lagrangian Pipeline.")
                 res_data = run_lagrangian_pipeline(pane, resolution)
@@ -265,6 +272,8 @@ def run_batch():
             }
         results.append(res_data)
 
+    LAST_RESULTS = {"resolution": resolution, "panes": results, "logs": logs}
+
     return jsonify({
         "status": "success",
         "resolution": resolution,
@@ -272,9 +281,24 @@ def run_batch():
         "logs": logs
     })
 
+@app.route("/export", methods=["GET"])
+def export_csv():
+    """Return a simple CSV summary of the last run. If none, return an empty template CSV."""
+    global LAST_RESULTS
+    header = "pane_index,engine_time_ms,centroid_x,centroid_y,std_x,std_y\n"
+    body_lines = []
+    if LAST_RESULTS and "panes" in LAST_RESULTS:
+        for i, p in enumerate(LAST_RESULTS["panes"]):
+            metrics = p.get("metrics", {})
+            line = f"{i+1},{p.get('engine_time_ms', 0.0)},{metrics.get('centroid_x', '')},{metrics.get('centroid_y', '')},{metrics.get('std_x', '')},{metrics.get('std_y', '')}"
+            body_lines.append(line)
+    csv_text = header + "\n".join(body_lines)
+    return Response(csv_text, mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=simulation_export.csv"})
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Bind to localhost and disable the interactive debugger by default for safety
+    app.run(host="127.0.0.1", port=5000, debug=False)
