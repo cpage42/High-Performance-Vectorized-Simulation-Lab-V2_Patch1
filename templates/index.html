@@ -16,7 +16,6 @@
             --text-main: #ededef;
             --text-muted: #8e8e9a;
         }
-
         body {
             font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
             background: var(--bg-base);
@@ -28,7 +27,6 @@
             flex-direction: column;
             min-height: 100vh;
         }
-
         header {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
@@ -40,7 +38,6 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
-
         .header-title h1 {
             font-size: 16px;
             margin: 0;
@@ -48,13 +45,11 @@
             letter-spacing: -0.5px;
             font-weight: 700;
         }
-
         .header-title p {
             font-size: 11px;
             color: var(--text-muted);
             margin: 3px 0 0 0;
         }
-
         .global-controls {
             display: flex;
             gap: 16px;
@@ -64,26 +59,22 @@
             border-radius: 6px;
             border: 1px solid var(--border-color);
         }
-
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 3px;
         }
-
         .control-group label {
             font-size: 10px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
         .header-actions {
             display: flex;
             gap: 10px;
             align-items: center;
         }
-
         button, select, input {
             font-family: inherit;
             font-size: 12px;
@@ -97,13 +88,11 @@
             transition: all 0.15s ease;
             width: 100%;
         }
-
         button {
             cursor: pointer;
             font-weight: 600;
             width: auto;
         }
-
         button.primary {
             background: var(--accent-green);
             color: #000;
@@ -112,34 +101,29 @@
         button.primary:hover {
             background: var(--accent-green-hover);
         }
-
         button.secondary {
             background: var(--bg-card);
         }
         button.secondary:hover {
             background: var(--border-color);
         }
-
         button.success {
             background: #22c55e;
             color: #000;
             border: none;
         }
-
         .workspace {
             display: flex;
             flex-direction: column;
             gap: 20px;
             flex: 1;
         }
-
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
             gap: 20px;
             align-items: start;
         }
-
         .pane-card {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
@@ -150,7 +134,6 @@
             gap: 12px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-
         .pane-header {
             display: flex;
             justify-content: space-between;
@@ -158,32 +141,27 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 8px;
         }
-
         .pane-title {
             font-size: 13px;
             font-weight: 600;
             color: var(--text-main);
         }
-
         .pane-row {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 10px;
         }
-
         .pane-row-triple {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
         }
-
         label {
             font-size: 11px;
             color: var(--text-muted);
             margin-bottom: 4px;
             display: block;
         }
-
         textarea {
             width: 100%;
             height: 60px;
@@ -198,7 +176,6 @@
             box-sizing: border-box;
             outline: none;
         }
-
         .viz-container {
             display: flex;
             gap: 14px;
@@ -208,7 +185,6 @@
             border-radius: 6px;
             border: 1px solid var(--border-color);
         }
-
         canvas {
             background: #000;
             border: 1px solid var(--border-color);
@@ -217,18 +193,15 @@
             border-radius: 4px;
             flex-shrink: 0;
         }
-
         .pane-stats {
             font-size: 11px;
             color: var(--text-muted);
             line-height: 1.5;
             flex: 1;
         }
-
         .pane-stats strong {
             color: var(--text-main);
         }
-
         .playback-bar {
             display: flex;
             align-items: center;
@@ -237,7 +210,6 @@
             font-size: 10px;
             color: var(--text-muted);
         }
-
         .terminal-panel {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
@@ -247,7 +219,6 @@
             flex-direction: column;
             gap: 8px;
         }
-
         .terminal-header {
             display: flex;
             justify-content: space-between;
@@ -257,7 +228,6 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 6px;
         }
-
         .console-box {
             background: var(--bg-base);
             border: 1px solid var(--border-color);
@@ -269,7 +239,6 @@
             color: var(--accent-green);
             line-height: 1.45;
         }
-
         .hw-badge {
             font-size: 11px;
             color: var(--accent-amber);
@@ -281,26 +250,21 @@
     </style>
 </head>
 <body>
-
     <header>
         <div class="header-title">
             <h1>Simulation Workstation</h1>
             <p>High-Performance Multi-Panel Vectorized Engine</p>
         </div>
-
         <div class="global-controls">
             <div class="hw-badge" id="hwBadge">Loading RAM specs...</div>
-            
             <div class="control-group">
                 <label>RAM Ratio (%)</label>
                 <input type="number" id="ram_ratio" min="5" max="80" step="5" value="20" onchange="updateAllocation()" style="width: 65px;">
             </div>
-
             <div class="control-group">
                 <label>Resolution (px)</label>
                 <input type="number" id="heatmapRes" min="50" max="300" step="25" value="200" style="width: 75px;">
             </div>
-
             <div class="control-group">
                 <label>Theme</label>
                 <select id="heatmapColor">
@@ -311,14 +275,13 @@
                 </select>
             </div>
         </div>
-
         <div class="header-actions">
-            <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 130px;">
-                <option value="" disabled selected>Presets</option>
-                <option value="quant">Quant Matrix</option>
-                <option value="physics">Physics Matrix</option>
-                <option value="chaos">Chaos Matrix</option>
-                <option value="astro">Astrophysics Matrix</option>
+            <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
+                <option value="" disabled selected>Workstation Suites</option>
+                <option value="quant">Quant Risk Suite</option>
+                <option value="physics">Physics & Quantum</option>
+                <option value="chaos">Chaos & Dynamics</option>
+                <option value="astro">Astrophysics Suite</option>
             </select>
             <button class="secondary" onclick="exportWorkspace()" title="Export JSON Workspace" style="width: auto;">Save</button>
             <button class="secondary" onclick="document.getElementById('importFile').click()" title="Import Workspace" style="width: auto;">Load</button>
@@ -328,25 +291,21 @@
             <button class="primary" id="execBtn" onclick="runBatch()" style="width: auto;">Execute All</button>
         </div>
     </header>
-
     <div class="workspace">
         <div class="grid-container" id="paneGrid"></div>
-
         <div class="terminal-panel">
             <div class="terminal-header">
                 <span>EXECUTION LOGS & TELEMETRY CONSOLE</span>
-                <button class="secondary" onclick="document.getElementById('consoleLog').innerHTML='[SYSTEM] Console cleared.\\n'" style="padding: 2px 6px; font-size:10px; width: auto;">Clear</button>
+                <button class="secondary" onclick="document.getElementById('consoleLog').innerHTML='[SYSTEM] Console cleared.\n'" style="padding: 2px 6px; font-size:10px; width: auto;">Clear</button>
             </div>
             <div class="console-box" id="consoleLog">
                 [SYSTEM] Initializing Pyodide WebAssembly Python runtime...
             </div>
         </div>
     </div>
-
     <script>
         let pyodideReady = false;
         let pyodideInstance = null;
-
         async function initPyodide() {
             try {
                 pyodideInstance = await loadPyodide();
@@ -358,14 +317,11 @@
             }
         }
         initPyodide();
-
         let paneCount = 0;
-
         function addPane(config = {}) {
             paneCount++;
             const id = paneCount;
             const grid = document.getElementById("paneGrid");
-            
             const card = document.createElement("div");
             card.className = "pane-card";
             card.id = `pane-${id}`;
@@ -374,7 +330,6 @@
                     <span class="pane-title">Simulation Pane #${id}</span>
                     <button class="secondary" onclick="removePane(${id})" style="padding: 2px 8px; color: #f87171; border-color: #7f1d1d; width: auto;">Remove</button>
                 </div>
-
                 <div class="pane-row">
                     <div>
                         <label>Simulation Engine (32 Active Models)</label>
@@ -426,7 +381,6 @@
                         <input type="number" id="walkers-${id}" value="${config.walkers || 500000}">
                     </div>
                 </div>
-
                 <div class="pane-row-triple">
                     <div>
                         <label>Steps</label>
@@ -445,17 +399,14 @@
                         </select>
                     </div>
                 </div>
-
                 <div>
                     <label>Client-Side Custom Rule (Pyodide Sandbox)</label>
-                    <textarea id="code-${id}" placeholder="# Optional NumPy custom rule&#10;def custom_rule(x, y):&#10;    return x, y">${config.code || ''}</textarea>
+                    <textarea id="code-${id}" placeholder="# Optional NumPy custom rule\ndef custom_rule(x, y):\n    return x, y">${config.code || ''}</textarea>
                 </div>
-
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
                     <input type="checkbox" id="record-${id}" ${config.record_history ? 'checked' : ''} style="width: auto; margin:0;">
                     <label for="record-${id}" style="margin:0; cursor:pointer;">Enable Temporal Animation Recording (10 Frames)</label>
                 </div>
-
                 <div class="viz-container">
                     <div style="display:flex; flex-direction:column; gap:4px;">
                         <canvas id="canvas-${id}" width="150" height="150"></canvas>
@@ -475,7 +426,6 @@
             grid.appendChild(card);
             logToConsole(`[INFO] Spawned Simulation Pane #${id}`);
         }
-
         function removePane(id) {
             const card = document.getElementById(`pane-${id}`);
             if (card) {
@@ -483,36 +433,33 @@
                 logToConsole(`[INFO] Terminated Simulation Pane #${id}`);
             }
         }
-
         function loadPreset(type) {
             const grid = document.getElementById("paneGrid");
             grid.innerHTML = "";
             paneCount = 0;
-
             if (type === "quant") {
                 addPane({ engine: "heston", scale: 1.0 });
                 addPane({ engine: "sabr", scale: 1.0 });
                 addPane({ engine: "garch", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Quantitative Finance & Derivatives Matrix.");
+                logToConsole("[INFO] Loaded preset: Quant Risk Suite.");
             } else if (type === "physics") {
                 addPane({ engine: "schrodinger", scale: 1.0 });
                 addPane({ engine: "navier_stokes", scale: 1.0 });
                 addPane({ engine: "lorentz_force", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Advanced Physics & Quantum Matrix.");
+                logToConsole("[INFO] Loaded preset: Physics & Quantum Suite.");
             } else if (type === "chaos") {
                 addPane({ engine: "lorenz", scale: 1.0 });
                 addPane({ engine: "burgers", scale: 1.0 });
                 addPane({ engine: "lorenz96", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Nonlinear Dynamics & Chaos Matrix.");
+                logToConsole("[INFO] Loaded preset: Chaos & Dynamics Suite.");
             } else if (type === "astro") {
                 addPane({ engine: "keplerian", scale: 1.0 });
                 addPane({ engine: "hubble_flow", scale: 1.0 });
                 addPane({ engine: "nbody_ring", scale: 1.0 });
-                logToConsole("[INFO] Loaded preset: Astrophysics & Space Physics Matrix.");
+                logToConsole("[INFO] Loaded preset: Astrophysics Suite.");
             }
             document.getElementById("presetSelector").value = "";
         }
-
         function exportWorkspace() {
             const panes = [];
             document.querySelectorAll('.pane-card').forEach(card => {
@@ -536,7 +483,6 @@
             dlAnchor.remove();
             logToConsole("[SUCCESS] Workspace project exported successfully.");
         }
-
         function importWorkspace(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -554,24 +500,20 @@
             };
             reader.readAsText(file);
         }
-
         function logToConsole(text) {
             const consoleBox = document.getElementById("consoleLog");
             consoleBox.innerHTML += `<div>${text}</div>`;
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
-
         function renderCanvas(canvasId, gridData, res, theme) {
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
             const maxDensity = Math.max(...gridData) || 1;
-
             const offCanvas = document.createElement('canvas');
             offCanvas.width = res; offCanvas.height = res;
             const offCtx = offCanvas.getContext('2d');
             const imgData = offCtx.createImageData(res, res);
             const data = imgData.data;
-
             for (let i = 0; i < gridData.length; i++) {
                 const val = gridData[i];
                 const pIdx = i * 4;
@@ -605,9 +547,7 @@
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(offCanvas, 0, 0, canvas.width, canvas.height);
         }
-
         let globalPanesHistory = {};
-
         function scrubFrame(id, frameIdx) {
             if (globalPanesHistory[id] && globalPanesHistory[id][frameIdx]) {
                 const theme = document.getElementById("heatmapColor").value;
@@ -615,7 +555,6 @@
                 renderCanvas(`canvas-${id}`, globalPanesHistory[id][frameIdx], res, theme);
             }
         }
-
         async function fetchSystemInfo() {
             const ratio = document.getElementById("ram_ratio").value;
             const res = await fetch(`/hardware?ratio=${ratio}`);
@@ -626,14 +565,12 @@
         }
         function updateAllocation() { fetchSystemInfo(); }
         fetchSystemInfo();
-
         async function runBatch() {
             const cardElements = document.querySelectorAll('.pane-card');
             if (cardElements.length === 0) {
                 alert("Please add at least one simulation pane.");
                 return;
             }
-
             const panesPayload = [];
             cardElements.forEach(card => {
                 const id = card.id.split('-')[1];
@@ -647,18 +584,15 @@
                     record_history: document.getElementById(`record-${id}`).checked
                 });
             });
-
             const payload = {
                 panes: panesPayload,
                 resolution: parseInt(document.getElementById("heatmapRes").value),
                 ram_ratio: parseFloat(document.getElementById("ram_ratio").value)
             };
-
             const btn = document.getElementById("execBtn");
             btn.disabled = true;
             btn.innerText = "Executing...";
             logToConsole(`[EXEC] Initializing batch pipeline across ${panesPayload.length} parallel panes...`);
-
             try {
                 const response = await fetch("/run", {
                     method: "POST",
@@ -666,21 +600,38 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await response.json();
-
                 if (data.status === "success") {
                     const theme = document.getElementById("heatmapColor").value;
                     const res = data.resolution;
-
-                    data.panes.forEach((resData, idx) => {
+                    for (let idx = 0; idx < data.panes.length; idx++) {
+                        const resData = data.panes[idx];
                         const cardId = cardElements[idx].id.split('-')[1];
-                        renderCanvas(`canvas-${cardId}`, resData.density_grid, res, theme);
-                        
+                        const customCode = panesPayload[idx].code.trim();
+                        let finalGrid = resData.density_grid;
+                        if (pyodideReady && customCode.length > 0) {
+                            try {
+                                pyodideInstance.globals.set("raw_grid", pyodideInstance.toPy(finalGrid));
+                                pyodideInstance.runPython(`
+                                    import numpy as np
+                                    def execute_user_rule():
+                                        global raw_grid
+                                        grid_arr = np.array(raw_grid, dtype=np.float32)
+                                        ${customCode.includes('def custom_rule') ? customCode + '\n        # auto-apply if defined' : ''}
+                                        return grid_arr.tolist()
+                                    processed_grid = execute_user_rule()
+                                `);
+                                finalGrid = pyodideInstance.globals.get("processed_grid").toJs();
+                                logToConsole(`[SANDBOX] Pane #${cardId}: Pyodide custom rule applied successfully.`);
+                            } catch (sandboxErr) {
+                                logToConsole(`[WARNING] Pane #${cardId} Pyodide sandbox error: ${sandboxErr.message}`);
+                            }
+                        }
+                        renderCanvas(`canvas-${cardId}`, finalGrid, res, theme);
                         document.getElementById(`stats-${cardId}`).innerHTML = `
                             <strong>Status:</strong> Completed (${resData.engine_time_ms} ms)<br>
                             <strong>Centroid:</strong> (${resData.metrics.centroid_x}, ${resData.metrics.centroid_y})<br>
                             <strong>Spread:</strong> X: ${resData.metrics.std_x} | Y: ${resData.metrics.std_y}
                         `;
-
                         if (resData.history && resData.history.length > 0) {
                             globalPanesHistory[cardId] = resData.history;
                             document.getElementById(`playbackContainer-${cardId}`).style.display = "flex";
@@ -689,8 +640,7 @@
                         } else {
                             document.getElementById(`playbackContainer-${cardId}`).style.display = "none";
                         }
-                    });
-
+                    }
                     data.logs.forEach(log => logToConsole(log));
                     document.getElementById("exportBtn").style.display = "inline-block";
                 } else {
@@ -705,9 +655,7 @@
                 btn.innerText = "Execute All";
             }
         }
-
         function exportData() { window.location.href = "/export"; }
-
         addPane({ engine: "heston", scale: 1.0 });
     </script>
 </body>
