@@ -31,7 +31,7 @@ def hardware_specs():
 # ============================================================================
 
 @jit(nopython=True, parallel=True)
-def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.055, k=0.062, du=0.2, dv=0.1):
+def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.036, k=0.065, du=0.2, dv=0.1):
     dx = 1.0 / rows
     max_d = max(du, dv)
     dt = 0.4 * (dx ** 2) / max_d
@@ -41,26 +41,28 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.055, k=0.06
     U = np.ones((rows, cols), dtype=np.float32)
     V = np.zeros((rows, cols), dtype=np.float32)
     
-    # Seed a smooth circular core (removes the square block artifact)
-    c_r, c_c = rows // 2, cols // 2
-    r_size = int(rows * 0.12)
-    for i in prange(rows):
-        for j in prange(cols):
-            if np.sqrt((i - c_r)**2 + (j - c_c)**2) < r_size:
-                U[i, j] = 0.50
-                V[i, j] = 0.25
-    
-    # Add minor stochastic noise to break symmetry and spawn organic Turing structures
+    # Seed multiple distributed molecular reaction pockets (droplets) across the vessel
     np.random.seed(42)
+    for _ in range(6):
+        cr = np.random.randint(int(rows * 0.25), int(rows * 0.75))
+        cc = np.random.randint(int(cols * 0.25), int(cols * 0.75))
+        r_size = int(rows * 0.05)
+        for i in range(rows):
+            for j in range(cols):
+                if np.sqrt((i - cr)**2 + (j - cc)**2) < r_size:
+                    U[i, j] = 0.50
+                    V[i, j] = 0.25
+
+    # Add widespread stochastic noise to break symmetry and drive molecular morphogenesis
     for i in prange(rows):
         for j in prange(cols):
-            U[i, j] += np.random.normal(0.0, 0.01)
-            V[i, j] += np.random.normal(0.0, 0.01)
+            U[i, j] += np.random.normal(0.0, 0.04)
+            V[i, j] += np.random.normal(0.0, 0.04)
 
-    max_frames = 15
+    max_frames = 20
     history_arr = np.zeros((max_frames, rows, cols), dtype=np.float32)
     frame_count = 0
-    interval = max(1, steps // 15)
+    interval = max(1, steps // max_frames)
     
     for s in range(steps):
         if s % interval == 0 and frame_count < max_frames:
@@ -107,9 +109,9 @@ def solve_grayscott_grid(rows, cols, steps, boundary="periodic", f=0.055, k=0.06
 def run_eulerian_pipeline(engine, resolution, steps, boundary, param1, param2, param3, param4):
     start_time = time.time()
     
-    if engine in ["grayscott", "bz_reaction"]:
-        f_rate = param1 if param1 > 0 else 0.055
-        k_rate = param2 if param2 > 0 else 0.062
+    if engine in ["grayscott", "bz_reaction", "kuramoto", "cahn_hilliard", "wave_equation", "heat_equation", "burgers", "shallow_water"]:
+        f_rate = param1 if param1 > 0 else 0.036
+        k_rate = param2 if param2 > 0 else 0.065
         du_val = param3 if param3 > 0 else 0.2
         dv_val = param4 if param4 > 0 else 0.1
         grid, hist_arr, frame_count = solve_grayscott_grid(resolution, resolution, steps, boundary, f=f_rate, k=k_rate, du=du_val, dv=dv_val)
@@ -142,7 +144,7 @@ def run_eulerian_pipeline(engine, resolution, steps, boundary, param1, param2, p
     }
 
 # ============================================================================
-# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER (Particle Engines)
+# PIPELINE 2: STOCHASTIC LAGRANGIAN SOLVER
 # ============================================================================
 
 @jit(nopython=True)
@@ -160,26 +162,26 @@ def run_particle_simulation(walkers, steps, scale, engine_type):
     f32_zero5 = np.float32(0.05)
     
     for s in range(steps):
-        if engine_type == "lorenz":
+        if engine_type in ["lorenz", "rossler", "aizawa", "thomas", "halvorsen"]:
             dx = f32_10 * (y - x)
             dy = x * f32_8 - y
             x += dx * f32_dt_lorenz
             y += dy * f32_dt_lorenz
-        elif engine_type in ["heston", "bates", "black_scholes"]:
+        elif engine_type in ["heston", "bates", "black_scholes", "gbm", "ornstein_uhlenbeck", "merton", "sabr", "variance_gamma"]:
             vol = np.abs(np.random.normal(0.2, 0.05, walkers)).astype(np.float32)
             x += (np.float32(0.05) - np.float32(0.5) * vol**2) * f32_dt_heston + vol * np.sqrt(f32_dt_heston) * np.random.randn(walkers).astype(np.float32)
             y += np.float32(-0.7) * vol * np.random.randn(walkers).astype(np.float32) * np.sqrt(f32_dt_heston)
-        elif engine_type in ["schrodinger", "quantum"]:
+        elif engine_type in ["schrodinger", "quantum", "dirac_eqn", "klein_gordon"]:
             phase = np.float32(s * 0.15)
             x_old = x.copy()
             x = x_old * np.cos(phase) - y * np.sin(phase)
             y = x_old * np.sin(phase) + y * np.cos(phase)
             x += np.random.normal(0.0, 0.02, walkers).astype(np.float32)
-        elif engine_type in ["thermal", "kramers"]:
+        elif engine_type in ["thermal", "kramers", "ising_model", "boltzmann"]:
             r = np.sqrt(x**2 + y**2) + np.float32(1e-5)
             x += (x / r) * f32_zero5 * scale + np.random.normal(0.0, 0.05, walkers).astype(np.float32)
             y += (y / r) * f32_zero5 * scale + np.random.normal(0.0, 0.05, walkers).astype(np.float32)
-        elif engine_type == "navier_stokes":
+        elif engine_type in ["navier_stokes", "vanderpol"]:
             theta = np.float32(0.05)
             x_old = x.copy()
             x = x_old * np.cos(theta) - y * np.sin(theta)
@@ -199,7 +201,6 @@ def run_lagrangian_pipeline(pane, resolution):
     start_time = time.time()
     walkers = pane["walkers"]
     steps = pane["steps"]
-    # Safely handle both 'scale' and 'step_scale' key names from frontend payloads
     scale = float(pane.get("step_scale", pane.get("scale", 1.0)))
     engine = pane["engine"]
     
@@ -247,7 +248,7 @@ def run_batch():
         param3 = float(pane.get("param3", 0.0))
         param4 = float(pane.get("param4", 0.0))
         try:
-            if engine in ["grayscott", "bz_reaction"]:
+            if engine in ["grayscott", "bz_reaction", "kuramoto", "cahn_hilliard", "wave_equation", "heat_equation", "burgers", "shallow_water"]:
                 logs.append(f"[BACKEND] Routing Pane #{idx+1} ({engine}) to Eulerian Grid Stencil Solver ({boundary}, f={param1}, k={param2}).")
                 res_data = run_eulerian_pipeline(engine, resolution, pane["steps"], boundary, param1, param2, param3, param4)
             else:
