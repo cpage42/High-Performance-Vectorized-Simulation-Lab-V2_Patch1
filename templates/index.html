@@ -164,7 +164,7 @@
         }
         textarea {
             width: 100%;
-            height: 90px;
+            height: 70px;
             background: var(--bg-base);
             color: var(--text-main);
             border: 1px solid var(--border-color);
@@ -202,13 +202,17 @@
         .pane-stats strong {
             color: var(--text-main);
         }
-        .playback-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .live-badge {
+            display: inline-block;
+            font-size: 9px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
             margin-top: 4px;
-            font-size: 10px;
-            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .terminal-panel {
             background: var(--bg-surface);
@@ -278,7 +282,6 @@
         <div class="header-actions">
             <select id="presetSelector" onchange="loadPreset(this.value)" style="width: 140px;">
                 <option value="" disabled selected>Workstation Suites</option>
-                <option value="multiphysics">Coupled Bioreactor Pitch</option>
                 <option value="showcase">Pure Physics Showcase</option>
                 <option value="eruption">Volcano Eruption Suite</option>
                 <option value="diffusion">Brownian Diffusion Suite</option>
@@ -313,11 +316,13 @@
                 pyodideReady = true;
                 logToConsole("[SUCCESS] Pyodide WebAssembly runtime loaded.");
             } catch (err) {
-                logToConsole("[WARNING] Pyodide failed to load. Custom browser execution disabled.");
+                logToConsole("[WARNING] Pyodide failed to load.");
             }
         }
         initPyodide();
         let paneCount = 0;
+        let activeIntervals = {};
+
         function addPane(config = {}) {
             paneCount++;
             const id = paneCount;
@@ -332,12 +337,13 @@
                 </div>
                 <div class="pane-row">
                     <div>
-                        <label>Simulation Engine (32 Active Models)</label>
+                        <label>Simulation Engine</label>
                         <select id="engine-${id}">
-                            <option value="grayscott" ${config.engine === 'grayscott' ? 'selected' : ''}>Gray-Scott Turing Pattern Formation</option>
+                            <option value="lorenz" ${config.engine === 'lorenz' || !config.engine ? 'selected' : ''}>Lorenz Attractor Chaos Butterfly</option>
+                            <option value="schrodinger" ${config.engine === 'schrodinger' ? 'selected' : ''}>Schrödinger Wavepacket Tunneling</option>
+                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid</option>
                             <option value="thermal" ${config.engine === 'thermal' ? 'selected' : ''}>Radial Thermal Conduction</option>
-                            <option value="navier_stokes" ${config.engine === 'navier_stokes' ? 'selected' : ''}>Simplified Navier-Stokes Fluid Vorticity</option>
-                            <option value="diffusion" ${config.engine === 'diffusion' || !config.engine ? 'selected' : ''}>Brownian Diffusion (Wiener Process)</option>
+                            <option value="diffusion" ${config.engine === 'diffusion' ? 'selected' : ''}>Brownian Diffusion</option>
                         </select>
                     </div>
                     <div>
@@ -348,7 +354,7 @@
                 <div class="pane-row-triple">
                     <div>
                         <label>Steps</label>
-                        <input type="number" id="steps-${id}" value="${config.steps || 100}">
+                        <input type="number" id="steps-${id}" value="${config.steps || 150}">
                     </div>
                     <div>
                         <label>Scale</label>
@@ -365,18 +371,17 @@
                 </div>
                 <div>
                     <label>Client-Side Custom Rule (Pyodide Sandbox)</label>
-                    <textarea id="code-${id}">${config.code || ''}</textarea>
+                    <textarea id="code-${id}" placeholder="# Optional custom rule">${config.code || ''}</textarea>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
-                    <input type="checkbox" id="record-${id}" ${config.record_history ? 'checked' : ''} style="width: auto; margin:0;">
-                    <label for="record-${id}" style="margin:0; cursor:pointer;">Enable Temporal Animation Recording (10 Frames)</label>
+                    <input type="checkbox" id="record-${id}" ${config.record_history !== false ? 'checked' : ''} style="width: auto; margin:0;">
+                    <label for="record-${id}" style="margin:0; cursor:pointer;">Enable Temporal Animation Recording</label>
                 </div>
                 <div class="viz-container">
                     <div style="display:flex; flex-direction:column; gap:4px;">
                         <canvas id="canvas-${id}" width="150" height="150"></canvas>
-                        <div id="playbackContainer-${id}" style="display:none;" class="playback-bar">
-                            <span>Frame:</span>
-                            <input type="range" id="slider-${id}" min="0" max="9" value="9" oninput="scrubFrame(${id}, this.value)" style="width: 110px; padding:0;">
+                        <div id="liveIndicator-${id}" style="display:none;">
+                            <span class="live-badge">● Live Loop Active</span>
                         </div>
                     </div>
                     <div class="pane-stats" id="stats-${id}">
@@ -391,6 +396,10 @@
             logToConsole(`[INFO] Spawned Simulation Pane #${id}`);
         }
         function removePane(id) {
+            if (activeIntervals[id]) {
+                clearInterval(activeIntervals[id]);
+                delete activeIntervals[id];
+            }
             const card = document.getElementById(`pane-${id}`);
             if (card) {
                 card.remove();
@@ -401,20 +410,18 @@
             const grid = document.getElementById("paneGrid");
             grid.innerHTML = "";
             paneCount = 0;
-            if (type === "multiphysics") {
-                // Chemical Synthesis (Gray-Scott)
-                addPane({ engine: "grayscott", walkers: 500000, steps: 200, scale: 1.0, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            grid2d[i, j] *= 1.3\ngrid_arr[:] = grid2d.flatten()" });
-                
-                // Exothermic Heat (Thermal)
-                addPane({ engine: "thermal", walkers: 400000, steps: 120, scale: 0.8, boundary: "reflective", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        if np.sqrt((i - center)**2 + (j - center)**2) > radius:\n            grid2d[i, j] *= 0.05\n        else:\n            grid2d[i, j] *= 1.5\ngrid_arr[:] = grid2d.flatten()" });
-                
-                // Fluid Stirrer (Navier-Stokes)
-                addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.2, boundary: "periodic", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nradius = res * 0.45\nfor i in range(res):\n    for j in range(res):\n        dist = np.sqrt((i - center)**2 + (j - center)**2)\n        if dist > radius:\n            grid2d[i, j] *= 0.0\n        else:\n            spin = int((dist / radius) * 25)\n            grid2d[i] = np.roll(grid2d[i], spin)\ngrid_arr[:] = grid2d.flatten()" });
-                
-                // Toxic Aerosol Exhaust (Diffusion)
-                addPane({ engine: "diffusion", walkers: 350000, steps: 100, scale: 1.5, boundary: "free", record_history: true, code: "res = int(np.sqrt(len(grid_arr)))\ngrid2d = grid_arr.reshape((res, res))\ncenter = res // 2\nfor i in range(res):\n    if i > center - 10:\n        grid2d[i] *= 0.0\n    else:\n        shift = int(((center - i) / res) * 50)\n        grid2d[i] = np.roll(grid2d[i], shift)\ngrid_arr[:] = grid2d.flatten()" });
-                
-                logToConsole("[INFO] Loaded preset: Coupled Multiphysics Industrial Bioreactor.");
+            Object.values(activeIntervals).forEach(interval => clearInterval(interval));
+            activeIntervals = {};
+
+            if (type === "showcase") {
+                addPane({ engine: "lorenz", walkers: 500000, steps: 200, scale: 1.0, boundary: "free", record_history: true });
+                addPane({ engine: "schrodinger", walkers: 500000, steps: 150, scale: 1.0, boundary: "free", record_history: true });
+                addPane({ engine: "navier_stokes", walkers: 500000, steps: 150, scale: 1.0, boundary: "periodic", record_history: true });
+                addPane({ engine: "thermal", walkers: 500000, steps: 150, scale: 1.0, boundary: "reflective", record_history: true });
+                logToConsole("[INFO] Loaded preset: Pure Physics Showcase.");
+            } else if (type === "eruption") {
+                addPane({ engine: "thermal", walkers: 400000, steps: 100, scale: 0.8, boundary: "reflective", record_history: true });
+                logToConsole("[INFO] Loaded preset: Eruption Suite.");
             }
             document.getElementById("presetSelector").value = "";
         }
@@ -449,6 +456,8 @@
                     const panes = JSON.parse(e.target.result);
                     document.getElementById("paneGrid").innerHTML = "";
                     paneCount = 0;
+                    Object.values(activeIntervals).forEach(i => clearInterval(i));
+                    activeIntervals = {};
                     panes.forEach(p => addPane(p));
                 } catch (err) {
                     alert("Invalid JSON workspace file.");
@@ -463,6 +472,7 @@
         }
         function renderCanvas(canvasId, gridData, res, theme) {
             const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const maxDensity = Math.max(...gridData) || 1;
             const offCanvas = document.createElement('canvas');
@@ -503,14 +513,7 @@
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(offCanvas, 0, 0, canvas.width, canvas.height);
         }
-        let globalPanesHistory = {};
-        function scrubFrame(id, frameIdx) {
-            if (globalPanesHistory[id] && globalPanesHistory[id][frameIdx]) {
-                const theme = document.getElementById("heatmapColor").value;
-                const res = parseInt(document.getElementById("heatmapRes").value);
-                renderCanvas(`canvas-${id}`, globalPanesHistory[id][frameIdx], res, theme);
-            }
-        }
+
         async function fetchSystemInfo() {
             const ratio = document.getElementById("ram_ratio").value;
             const res = await fetch(`/hardware?ratio=${ratio}`);
@@ -521,6 +524,7 @@
         }
         function updateAllocation() { fetchSystemInfo(); }
         fetchSystemInfo();
+
         async function runBatch() {
             const cardElements = document.querySelectorAll('.pane-card');
             if (cardElements.length === 0) return;
@@ -545,7 +549,7 @@
             const btn = document.getElementById("execBtn");
             btn.disabled = true;
             btn.innerText = "Executing...";
-            logToConsole(`[EXEC] Dispatching coupled multiphysics bioreactor data...`);
+            logToConsole(`[EXEC] Executing batch calculations...`);
             try {
                 const response = await fetch("/run", {
                     method: "POST",
@@ -582,13 +586,26 @@ processed_grid = grid_arr.tolist()
                             <strong>Centroid:</strong> (${resData.metrics.centroid_x}, ${resData.metrics.centroid_y})<br>
                             <strong>Spread:</strong> X: ${resData.metrics.std_x} | Y: ${resData.metrics.std_y}
                         `;
+
+                        // Setup continuous auto-looping animation instead of slider
+                        if (activeIntervals[cardId]) {
+                            clearInterval(activeIntervals[cardId]);
+                            delete activeIntervals[cardId];
+                        }
+
                         if (resData.history && resData.history.length > 0) {
-                            globalPanesHistory[cardId] = resData.history;
-                            document.getElementById(`playbackContainer-${cardId}`).style.display = "flex";
-                            document.getElementById(`slider-${cardId}`).max = resData.history.length - 1;
-                            document.getElementById(`slider-${cardId}`).value = resData.history.length - 1;
+                            const history = resData.history;
+                            let frameIdx = 0;
+                            document.getElementById(`liveIndicator-${cardId}`).style.display = "block";
+                            
+                            activeIntervals[cardId] = setInterval(() => {
+                                frameIdx = (frameIdx + 1) % history.length;
+                                const currentTheme = document.getElementById("heatmapColor").value;
+                                const currentRes = parseInt(document.getElementById("heatmapRes").value);
+                                renderCanvas(`canvas-${cardId}`, history[frameIdx], currentRes, currentTheme);
+                            }, 120); // 120ms per frame = smooth continuous playback loop
                         } else {
-                            document.getElementById(`playbackContainer-${cardId}`).style.display = "none";
+                            document.getElementById(`liveIndicator-${cardId}`).style.display = "none";
                         }
                     }
                     data.logs.forEach(log => logToConsole(log));
@@ -603,7 +620,7 @@ processed_grid = grid_arr.tolist()
         }
         function exportData() { window.location.href = "/export"; }
         
-        window.onload = () => { loadPreset("multiphysics"); };
+        window.onload = () => { loadPreset("showcase"); };
     </script>
 </body>
 </html>
